@@ -167,6 +167,9 @@ def main():
 
     camera = Camera(level.width * TILE_SIZE, level.height * TILE_SIZE)
 
+    # Initialize remaining stars
+    remaining_stars = 10
+
     # Track cooldown
     last_throw_time = 0
     cooldown = 200  # Cooldown in milliseconds (0.2 seconds)
@@ -192,12 +195,13 @@ def main():
         player.move(dx, dy)
 
         # Check for "K" press and cooldown
-        if keys[pygame.K_k] and current_time - last_throw_time > cooldown:
+        if keys[pygame.K_k] and current_time - last_throw_time > cooldown and remaining_stars > 0:
             direction = 1 if player.facing_right else -1  # Determine direction based on facing direction
             star = Star(player.rect.centerx, player.rect.centery, direction, level.width * TILE_SIZE)
             stars.add(star)
             all_sprites.add(star)
             last_throw_time = current_time
+            remaining_stars -= 1  # Decrease remaining stars
 
         # Check for "J" press
         if keys[pygame.K_j]:
@@ -207,6 +211,7 @@ def main():
         stars.update()
         camera.update(player)
 
+        # Draw the screen
         screen.fill(BLACK)
         level.draw(screen, camera)
         for sprite in all_sprites:
@@ -216,13 +221,16 @@ def main():
         for i in range(3):  # 3 hearts
             screen.blit(heart_image, (10 + i * 40, 10))
 
+        # Draw remaining stars count
+        screen.blit(star_image, (15, 53))  # Star image at top-left corner
+        font = pygame.font.Font(None, 36)  # Font for the text
+        stars_text = font.render(f"x {remaining_stars}", True, (255, 255, 255))  # Text to display count
+        screen.blit(stars_text, (45, 50))  # Text position next to the star image
+
         pygame.display.flip()
         clock.tick(FPS)
 
     pygame.quit()
-
-
-
 
 if __name__ == "__main__":
     main()
