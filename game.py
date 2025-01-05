@@ -66,27 +66,38 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, tiles):
             self.rect.y -= self.dy
 
-        # Revert to the original image after 1 second
+        # Revert to the correct `knight1` image (rotated or original) after 1 second
         if self.last_image_change_time:
             current_time = pygame.time.get_ticks()
-            if current_time - self.last_image_change_time > 50:  # 50 milisecond
-                self.image = self.original_image
+            if current_time - self.last_image_change_time > 50:  # 1 second
+                if self.facing_right:
+                    self.image = self.original_image
+                else:
+                    self.image = pygame.transform.flip(self.original_image, True, False)
                 self.last_image_change_time = None
 
     def move(self, dx, dy):
         self.dx, self.dy = dx, dy
 
-        # Flip the image when changing direction
+        # Flip the images when changing direction
         if dx < 0 and self.facing_right:  # Moving left
             self.image = pygame.transform.flip(self.original_image, True, False)
+            self.alternate_image = pygame.transform.scale(self.alternate_image, (TILE_SIZE, TILE_SIZE))
             self.facing_right = False
         elif dx > 0 and not self.facing_right:  # Moving right
             self.image = self.original_image
+            self.alternate_image = pygame.image.load("images/Knight/knight2.png")  # Reload original alternate image
+            self.alternate_image = pygame.transform.scale(self.alternate_image, (TILE_SIZE, TILE_SIZE))
             self.facing_right = True
 
     def change_image_temporarily(self):
-        self.image = self.alternate_image
+        # Switch to the alternate image but keep track of the direction
+        if self.facing_right:
+            self.image = self.alternate_image
+        else:
+            self.image = pygame.transform.flip(self.alternate_image, True, False)
         self.last_image_change_time = pygame.time.get_ticks()
+
 
 # Tile class
 class Tile(pygame.sprite.Sprite):
@@ -99,7 +110,7 @@ class Tile(pygame.sprite.Sprite):
 
 # Star class
 class Star(pygame.sprite.Sprite):
-    def __init__(self, x, y, direction):
+    def __init__(self, x, y, direction, level_width):
         super().__init__()
         self.original_image = star_image  # Save the original image for rotation
         self.image = self.original_image
@@ -107,6 +118,7 @@ class Star(pygame.sprite.Sprite):
         self.rect.center = (x, y)
         self.direction = direction
         self.angle = 0  # Initial angle for rotation
+        self.level_width = level_width  # Level width in pixels
 
     def update(self):
         # Rotate the star
@@ -116,7 +128,11 @@ class Star(pygame.sprite.Sprite):
 
         # Move the star
         self.rect.x += self.direction * 10
-        if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
+
+        # Remove the star if it reaches the level boundaries
+        if self.direction > 0 and self.rect.x >= self.level_width:
+            self.kill()
+        elif self.direction < 0 and self.rect.x <= 0:
             self.kill()
 
 
@@ -153,7 +169,7 @@ def main():
 
     # Track cooldown
     last_throw_time = 0
-    cooldown = 0  # Cooldown in milliseconds (2 seconds)
+    cooldown = 200  # Cooldown in milliseconds (0.2 seconds)
 
     running = True
     while running:
@@ -177,8 +193,8 @@ def main():
 
         # Check for "K" press and cooldown
         if keys[pygame.K_k] and current_time - last_throw_time > cooldown:
-            direction = 1 if player.dx >= 0 else -1
-            star = Star(player.rect.centerx, player.rect.centery, direction)
+            direction = 1 if player.facing_right else -1  # Determine direction based on facing direction
+            star = Star(player.rect.centerx, player.rect.centery, direction, level.width * TILE_SIZE)
             stars.add(star)
             all_sprites.add(star)
             last_throw_time = current_time
@@ -204,6 +220,8 @@ def main():
         clock.tick(FPS)
 
     pygame.quit()
+
+
 
 
 if __name__ == "__main__":
