@@ -1,14 +1,6 @@
 import pygame
-
-# Constants
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
-FPS = 60
-
-# Colors
-WHITE = (255, 255, 255)
-BROWN = (139, 69, 19)
-DARK_BROWN = (101, 67, 33)
-LIGHT_BROWN = (210, 180, 140)
+from colors import BROWN, BLACK, WHITE, DARK_BROWN, LIGHT_BROWN, YELLOW, GREEN, RED
+from setting import SCREEN_WIDTH, SCREEN_HEIGHT, FPS
 
 # Initialize Pygame
 pygame.init()

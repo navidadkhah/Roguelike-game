@@ -1,16 +1,8 @@
 import pygame
 import random
 from menu import main_menu
-
-# Constants
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
-TILE_SIZE = 80
-FPS = 60
-
-# Colors
-BLACK = (255, 0, 0)
-BROWN = (139, 69, 19)
-YELLOW = (255, 255, 0)
+from colors import BROWN, BLACK, WHITE, DARK_BROWN, LIGHT_BROWN, YELLOW, GREEN, RED
+from setting import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TILE_SIZE
 
 # Initialize Pygame
 pygame.init()
@@ -212,7 +204,7 @@ def main():
         camera.update(player)
 
         # Draw the screen
-        screen.fill(BLACK)
+        screen.fill(GREEN)
         level.draw(screen, camera)
         for sprite in all_sprites:
             screen.blit(sprite.image, camera.apply(sprite))
