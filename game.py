@@ -16,6 +16,16 @@ heart_image = pygame.transform.scale(heart_image, (30, 30))
 star_image = pygame.image.load("images/Ninja_Star/Ninja_star.png")  # Replace with your star image
 star_image = pygame.transform.scale(star_image, (20, 20))  # Adjust size as needed
 
+j_sound = pygame.mixer.Sound("Sounds/Sword/sword-sound.mp3")  # Replace with the path to your sound file
+j_sound.set_volume(0.4)  # Adjust volume if needed
+
+back_ground_sound = pygame.mixer.Sound("Sounds/SoundTracks/SoundTrack1/s1.mp3")  # Replace with the path to your sound file
+back_ground_sound.set_volume(0.6)  # Adjust volume if needed
+
+stars_sound = pygame.mixer.Sound("Sounds/Star/stars.mp3")  # Replace with the path to your sound file
+stars_sound.set_volume(0.4)  # Adjust volume if needed
+
+
 # Camera class
 class Camera:
     def __init__(self, width, height):
@@ -150,6 +160,7 @@ class Level:
 # Main game function
 def main():
     main_menu()
+    back_ground_sound.play()
     player = Player(TILE_SIZE, TILE_SIZE)
     level = Level(SCREEN_WIDTH // TILE_SIZE * 3, SCREEN_HEIGHT // TILE_SIZE * 3)
 
@@ -188,6 +199,7 @@ def main():
 
         # Check for "K" press and cooldown
         if keys[pygame.K_k] and current_time - last_throw_time > cooldown and remaining_stars > 0:
+            stars_sound.play()
             direction = 1 if player.facing_right else -1  # Determine direction based on facing direction
             star = Star(player.rect.centerx, player.rect.centery, direction, level.width * TILE_SIZE)
             stars.add(star)
@@ -197,6 +209,7 @@ def main():
 
         # Check for "J" press
         if keys[pygame.K_j]:
+            j_sound.play()
             player.change_image_temporarily()
 
         player.update(level.tiles)
