@@ -3,6 +3,7 @@ import random
 from menu import main_menu
 from colors import BROWN, BLACK, WHITE, DARK_BROWN, LIGHT_BROWN, YELLOW, GREEN, RED
 from setting import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TILE_SIZE
+from collections import deque
 
 # Initialize Pygame
 pygame.init()
@@ -24,6 +25,10 @@ back_ground_sound.set_volume(0.6)  # Adjust volume if needed
 
 stars_sound = pygame.mixer.Sound("Sounds/Star/stars.mp3")  # Replace with the path to your sound file
 stars_sound.set_volume(0.4)  # Adjust volume if needed
+
+enemy_image = pygame.image.load("images/Enemy1/Enemy1_1.png")
+enemy_image = pygame.transform.scale(enemy_image, (TILE_SIZE, TILE_SIZE))
+
 
 
 # Camera class
@@ -122,7 +127,7 @@ class Star(pygame.sprite.Sprite):
         self.angle = 0  # Initial angle for rotation
         self.level_width = level_width  # Level width in pixels
 
-    def update(self):
+    def update(self, tiles, enemy_group):
         # Rotate the star
         self.angle += 10  # Adjust rotation speed as needed
         self.image = pygame.transform.rotate(self.original_image, self.angle)
@@ -132,10 +137,125 @@ class Star(pygame.sprite.Sprite):
         self.rect.x += self.direction * 10
 
         # Remove the star if it reaches the level boundaries
-        if self.direction > 0 and self.rect.x >= self.level_width:
+        if self.rect.right < 0 or self.rect.left > self.level_width:
             self.kill()
-        elif self.direction < 0 and self.rect.x <= 0:
+
+        # Check collision with walls (tiles)
+        if pygame.sprite.spritecollideany(self, tiles):
             self.kill()
+
+        # Check collision with enemies
+        collided_enemies = pygame.sprite.spritecollide(self, enemy_group, False)  # Do not remove the enemy immediately
+        if collided_enemies:
+            for enemy in collided_enemies:
+                enemy.take_damage()  # Reduce enemy's health
+            self.kill()  # Remove the star after hitting the enemy
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image1 = enemy_image  # Enemy1 image
+        self.image2 = pygame.image.load("images/Enemy1/Enemy1_2.png")  # Enemy2 image
+        self.image2 = pygame.transform.scale(self.image2, (TILE_SIZE, TILE_SIZE))
+        self.image = self.image1
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+        self.speed = 2  # Movement speed
+        self.health = 2  # Enemy requires two hits to die
+        self.last_image_change_time = 0  # Timer for alternating images
+        self.image_toggle_interval = 100  # Time in milliseconds to alternate images
+        self.path = []  # Store the path from BFS
+
+    def take_damage(self):
+        """Reduce health and check if the enemy is dead."""
+        self.health -= 1
+        if self.health <= 0:
+            self.kill()
+
+    def get_tile_pos(self, x, y):
+        """Convert pixel coordinates to grid coordinates."""
+        return x // TILE_SIZE, y // TILE_SIZE
+
+    def get_pixel_pos(self, tile_x, tile_y):
+        """Convert grid coordinates back to pixel coordinates."""
+        return tile_x * TILE_SIZE, tile_y * TILE_SIZE
+
+    def bfs(self, start, goal, walls):
+        """Perform BFS to find the shortest path from start to goal."""
+        queue = deque([start])
+        visited = {start}
+        came_from = {}
+
+        while queue:
+            current = queue.popleft()
+            if current == goal:
+                # Reconstruct the path
+                path = []
+                while current != start:
+                    path.append(current)
+                    current = came_from[current]
+                path.reverse()
+                return path
+
+            # Explore neighbors
+            neighbors = [
+                (current[0] + 1, current[1]),  # Right
+                (current[0] - 1, current[1]),  # Left
+                (current[0], current[1] + 1),  # Down
+                (current[0], current[1] - 1),  # Up
+            ]
+
+            for neighbor in neighbors:
+                if (
+                    neighbor not in visited
+                    and neighbor not in walls
+                    and neighbor[0] >= 0
+                    and neighbor[1] >= 0
+                ):
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+                    came_from[neighbor] = current
+        return None  # No path found
+
+    def update(self, player, tiles):
+        """Update enemy movement and handle interaction with the player."""
+        # Get the current positions of the enemy and player in grid coordinates
+        enemy_pos = self.get_tile_pos(self.rect.x, self.rect.y)
+        player_pos = self.get_tile_pos(player.rect.x, player.rect.y)
+
+        # Build a set of wall positions in grid coordinates
+        walls = {self.get_tile_pos(tile.rect.x, tile.rect.y) for tile in tiles}
+
+        # Recalculate path if player moved to a new tile or the path is empty
+        if not self.path or self.path[-1] != player_pos:
+            self.path = self.bfs(enemy_pos, player_pos, walls)
+
+        # Follow the path if available
+        if self.path:
+            next_tile = self.path[0]
+            next_x, next_y = self.get_pixel_pos(next_tile[0], next_tile[1])
+
+            # Smooth movement toward the next tile
+            if self.rect.x < next_x:
+                self.rect.x = min(self.rect.x + self.speed, next_x)
+            elif self.rect.x > next_x:
+                self.rect.x = max(self.rect.x - self.speed, next_x)
+
+            if self.rect.y < next_y:
+                self.rect.y = min(self.rect.y + self.speed, next_y)
+            elif self.rect.y > next_y:
+                self.rect.y = max(self.rect.y - self.speed, next_y)
+
+            # Check if the enemy has reached the next tile
+            if self.rect.topleft == (next_x, next_y):
+                self.path.pop(0)  # Remove the reached tile from the path
+
+        # If enemy reaches the player's exact tile, toggle images
+        if enemy_pos == player_pos:
+            current_time = pygame.time.get_ticks()
+            if current_time - self.last_image_change_time > self.image_toggle_interval:
+                self.image = self.image2 if self.image == self.image1 else self.image1
+                self.last_image_change_time = current_time
 
 
 # Level generator
@@ -160,22 +280,23 @@ class Level:
 # Main game function
 def main():
     main_menu()
-    back_ground_sound.play()
+    back_ground_sound.play(-1)  # Loop the background sound
     player = Player(TILE_SIZE, TILE_SIZE)
+    enemy = Enemy(TILE_SIZE * 5, TILE_SIZE * 5)  # Enemy starts at a specific position
     level = Level(SCREEN_WIDTH // TILE_SIZE * 3, SCREEN_HEIGHT // TILE_SIZE * 3)
 
     all_sprites = pygame.sprite.Group()
     stars = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()  # Group to manage enemies
     all_sprites.add(player)
+    all_sprites.add(enemy)
+    enemy_group.add(enemy)  # Add the enemy to the group
 
     camera = Camera(level.width * TILE_SIZE, level.height * TILE_SIZE)
 
-    # Initialize remaining stars
     remaining_stars = 10
-
-    # Track cooldown
     last_throw_time = 0
-    cooldown = 200  # Cooldown in milliseconds (0.2 seconds)
+    cooldown = 200
 
     running = True
     while running:
@@ -197,23 +318,23 @@ def main():
             dy += 5
         player.move(dx, dy)
 
-        # Check for "K" press and cooldown
         if keys[pygame.K_k] and current_time - last_throw_time > cooldown and remaining_stars > 0:
             stars_sound.play()
-            direction = 1 if player.facing_right else -1  # Determine direction based on facing direction
+            direction = 1 if player.facing_right else -1
             star = Star(player.rect.centerx, player.rect.centery, direction, level.width * TILE_SIZE)
             stars.add(star)
             all_sprites.add(star)
             last_throw_time = current_time
-            remaining_stars -= 1  # Decrease remaining stars
+            remaining_stars -= 1
 
-        # Check for "J" press
         if keys[pygame.K_j]:
             j_sound.play()
             player.change_image_temporarily()
 
+        # Update all entities
         player.update(level.tiles)
-        stars.update()
+        enemy.update(player, level.tiles)  # Enemy uses BFS to track player
+        stars.update(level.tiles, enemy_group)  # Pass tiles and enemies for collision check # Pass tiles and enemies for collision check
         camera.update(player)
 
         # Draw the screen
@@ -222,20 +343,19 @@ def main():
         for sprite in all_sprites:
             screen.blit(sprite.image, camera.apply(sprite))
 
-        # Draw hearts in the top-left corner
-        for i in range(3):  # 3 hearts
+        for i in range(3):  # Draw 3 hearts
             screen.blit(heart_image, (10 + i * 40, 10))
 
-        # Draw remaining stars count
-        screen.blit(star_image, (15, 53))  # Star image at top-left corner
-        font = pygame.font.Font(None, 36)  # Font for the text
-        stars_text = font.render(f"x {remaining_stars}", True, (255, 255, 255))  # Text to display count
-        screen.blit(stars_text, (45, 50))  # Text position next to the star image
+        screen.blit(star_image, (15, 53))  # Draw star icon
+        font = pygame.font.Font(None, 36)
+        stars_text = font.render(f"x {remaining_stars}", True, (255, 255, 255))
+        screen.blit(stars_text, (45, 50))  # Draw remaining stars
 
         pygame.display.flip()
         clock.tick(FPS)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()
