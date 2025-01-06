@@ -17,7 +17,11 @@ class Enemy(pygame.sprite.Sprite):
         self.speed = 2  # Movement speed
         self.health = 2  # Enemy requires two hits to die
         self.path = []  # Store the path from BFS
-        self.time_of_last_change = None  # To store the time when the image last changed
+        self.time_of_last_change = None  # To store the time when the image last changedsuper().__init__()
+        self.image = enemy_image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+        self.health = 3  # Enemy's health
 
     def take_damage(self):
         """Reduce health and check if the enemy is dead."""

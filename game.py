@@ -56,6 +56,8 @@ class Player(pygame.sprite.Sprite):
         self.dx, self.dy = 0, 0
         self.facing_right = True  # Track the direction the player is facing
         self.last_image_change_time = None  # Timer for image change
+        self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
+        self.damage_applied = False
 
     def update(self, tiles):
         self.rect.x += self.dx
@@ -65,15 +67,12 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, tiles):
             self.rect.y -= self.dy
 
-        # Revert to the correct `knight1` image (rotated or original) after 1 second
-        if self.last_image_change_time:
-            current_time = pygame.time.get_ticks()
-            if current_time - self.last_image_change_time > 50:  # 1 second
-                if self.facing_right:
-                    self.image = self.original_image
-                else:
-                    self.image = pygame.transform.flip(self.original_image, True, False)
-                self.last_image_change_time = None
+        # Revert to the correct `knight1` image after the knight2 duration
+        current_time = pygame.time.get_ticks()
+        if self.last_image_change_time and current_time - self.last_image_change_time > self.knight2_duration:
+            self.image = self.original_image
+            self.last_image_change_time = None
+            self.damage_applied = False
 
     def move(self, dx, dy):
         self.dx, self.dy = dx, dy
@@ -81,21 +80,29 @@ class Player(pygame.sprite.Sprite):
         # Flip the images when changing direction
         if dx < 0 and self.facing_right:  # Moving left
             self.image = pygame.transform.flip(self.original_image, True, False)
-            self.alternate_image = pygame.transform.scale(self.alternate_image, (TILE_SIZE, TILE_SIZE))
             self.facing_right = False
         elif dx > 0 and not self.facing_right:  # Moving right
             self.image = self.original_image
-            self.alternate_image = pygame.image.load("images/Knight/knight2.png")  # Reload original alternate image
-            self.alternate_image = pygame.transform.scale(self.alternate_image, (TILE_SIZE, TILE_SIZE))
             self.facing_right = True
 
-    def change_image_temporarily(self):
-        # Switch to the alternate image but keep track of the direction
-        if self.facing_right:
-            self.image = self.alternate_image
-        else:
-            self.image = pygame.transform.flip(self.alternate_image, True, False)
+    def activate_knight2(self, enemies):
+        """Switch to the alternate image and damage nearby enemies."""
+        self.image = self.alternate_image if self.facing_right else pygame.transform.flip(self.alternate_image, True, False)
         self.last_image_change_time = pygame.time.get_ticks()
+
+        # Damage nearby enemies
+        if not self.damage_applied:
+            for enemy in enemies:
+                if self.is_nearby(enemy):
+                    enemy.take_damage()  # Damage enemy
+            self.damage_applied = True
+
+    def is_nearby(self, enemy):
+        """Check if an enemy is within a certain range of the player."""
+        player_center = self.rect.center
+        enemy_center = enemy.rect.center
+        distance = pygame.math.Vector2(player_center).distance_to(enemy_center)
+        return distance < 100  # Adjust the range as needed
 
 
 # Tile class
@@ -248,7 +255,9 @@ def main():
 
         if keys[pygame.K_j]:
             j_sound.play()
-            player.change_image_temporarily()
+            player.activate_knight2(level.enemies)
+
+        # player.reset_damage_flag()
 
         # Update all entities
         player.update(level.tiles)
