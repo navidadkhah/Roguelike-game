@@ -11,14 +11,19 @@ pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 clock = pygame.time.Clock()
 
-# Load heart and star images
-heart_image = pygame.image.load("images/Heart/Heart.png")
-heart_image = pygame.transform.scale(heart_image, (30, 30))
+# Load heart
+full_heart_image = pygame.image.load("images/Heart/Heart.png").convert_alpha()
+full_heart_image = pygame.transform.scale(full_heart_image, (30, 30))
+half_heart_image = pygame.image.load("images/Heart/Half_heart.png").convert_alpha()
+half_heart_image = pygame.transform.scale(half_heart_image, (30, 30))
+empty_heart_image = pygame.image.load("images/Heart/Heart_empty.png").convert_alpha()
+empty_heart_image = pygame.transform.scale(empty_heart_image, (30, 30))
 
+# Load star images
 star_image = pygame.image.load("images/Ninja_Star/Ninja_star.png")  # Replace with your star image
 star_image = pygame.transform.scale(star_image, (20, 20))  # Adjust size as needed
 
-
+# Load enemy 1 images
 enemy_image = pygame.image.load("images/Enemy1/Enemy1_1.png")
 enemy_image = pygame.transform.scale(enemy_image, (TILE_SIZE, TILE_SIZE))
 
@@ -58,6 +63,7 @@ class Player(pygame.sprite.Sprite):
         self.last_image_change_time = None  # Timer for image change
         self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
         self.damage_applied = False
+        self.health = 50  # Total health points (3 full hearts, 4 hits per heart)
 
     def update(self, tiles):
         self.rect.x += self.dx
@@ -96,7 +102,7 @@ class Player(pygame.sprite.Sprite):
             self.image = pygame.transform.flip(self.alternate_image, True, False)  # Flip image if facing left
 
         self.last_image_change_time = pygame.time.get_ticks()
- 
+
         # Damage nearby enemies
         if not self.damage_applied:
             for enemy in enemies:
@@ -110,6 +116,25 @@ class Player(pygame.sprite.Sprite):
         enemy_center = enemy.rect.center
         distance = pygame.math.Vector2(player_center).distance_to(enemy_center)
         return distance < 100  # Adjust the range as needed
+
+    def take_damage(self):
+        """Reduce health and manage heart images."""
+        self.health -= 1
+        print(self.health)
+        if self.health <= 0:
+            # Handle game over or player death scenario
+            print("Player has died")
+
+    def draw_health(self, screen):
+        """Draw health bar on the screen."""
+        for i in range(3):  # Player has 3 hearts
+            heart_x = 10 + i * 40
+            if self.health > (i + 1) * 4:
+                screen.blit(full_heart_image, (heart_x, 10))
+            elif self.health > i * 4 + 2:
+                screen.blit(half_heart_image, (heart_x, 10))
+            else:
+                screen.blit(empty_heart_image, (heart_x, 10))
 
 
 # Tile class
@@ -184,13 +209,13 @@ class Level:
                 # Randomly place collectible items
                 elif random.random() < 0.05:
                     item = pygame.sprite.Sprite()
-                    item.image = heart_image  # Example: Heart image as collectible
+                    item.image = full_heart_image  # Example: Heart image as collectible
                     item.rect = item.image.get_rect()
                     item.rect.topleft = (x, y)
                     self.items.add(item)
 
         # Fixed number of enemies
-        num_enemies = 10  # Set the exact number of enemies you want
+        num_enemies = 1  # Set the exact number of enemies you want
         placed_enemies = 0
         while placed_enemies < num_enemies:
             x = random.randint(1, self.width - 2) * TILE_SIZE  # Avoid edge
@@ -230,7 +255,6 @@ def main():
     remaining_stars = 10
     last_throw_time = 0
     cooldown = 200
-
     running = True
     while running:
         current_time = pygame.time.get_ticks()
@@ -272,6 +296,7 @@ def main():
 
         # Update each enemy in the level
         for enemy in level.enemies:
+            # enemy.time_of_last_change = pygame.time.get_ticks()
             enemy.update(player, level.tiles)
 
         camera.update(player)
@@ -287,8 +312,10 @@ def main():
         for sprite in all_sprites:
             screen.blit(sprite.image, camera.apply(sprite))
 
-        for i in range(3):  # Draw 3 hearts
-            screen.blit(heart_image, (10 + i * 40, 10))
+        player.draw_health(screen)
+
+        # for i in range(3):  # Draw 3 hearts
+        #     screen.blit(full_heart_image, (10 + i * 40, 10))
 
         screen.blit(star_image, (15, 53))  # Draw star icon
         font = pygame.font.Font(None, 36)

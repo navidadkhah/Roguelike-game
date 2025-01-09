@@ -8,20 +8,19 @@ enemy_image = pygame.transform.scale(enemy_image, (TILE_SIZE, TILE_SIZE))
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image1 = enemy_image  # Enemy1 default image
-        self.image2 = pygame.image.load("images/Enemy1/Enemy1_2.png")  # Enemy2 image
+        self.image1 = pygame.image.load("images/Enemy1/Enemy1_1.png").convert_alpha()
+        self.image1 = pygame.transform.scale(self.image1, (TILE_SIZE, TILE_SIZE))
+        self.image2 = pygame.image.load("images/Enemy1/Enemy1_2.png").convert_alpha()
         self.image2 = pygame.transform.scale(self.image2, (TILE_SIZE, TILE_SIZE))
         self.image = self.image1  # Start with the default image
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
         self.speed = 2  # Movement speed
         self.health = 2  # Enemy requires two hits to die
-        self.path = []  # Store the path from BFS
-        self.time_of_last_change = None  # To store the time when the image last changedsuper().__init__()
-        self.image = enemy_image
-        self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
-        self.health = 3  # Enemy's health
+        self.cooldown = 100  # Cooldown period of 2 seconds for image toggling
+        self.time_of_last_change = pygame.time.get_ticks()  # Set initial time to current tick
+        self.path = []  # Pathfinding
+
 
     def take_damage(self):
         """Reduce health and check if the enemy is dead."""
@@ -76,36 +75,39 @@ class Enemy(pygame.sprite.Sprite):
 
     def update(self, player, tiles):
         """Update enemy movement and handle interaction with the player."""
-        current_time = pygame.time.get_ticks()  # Get the current time in milliseconds
+        current_time = pygame.time.get_ticks()
 
-        # Check if enemy collides with player
+        # Ensuring that time_of_last_change is not None
+        if self.time_of_last_change is None:
+            self.time_of_last_change = pygame.time.get_ticks()
+
+        # Check if enemy collides with player and if the cooldown has passed
         if self.rect.colliderect(player.rect):
-            if self.image != self.image2:  # Change to image2 only if not already in image2
-                self.image = self.image2
-                self.time_of_last_change = current_time  # Record the time when the image changed
+            if (current_time - self.time_of_last_change > self.cooldown):
+                # Toggle the image based on the current image state
+                self.image = self.image2 if self.image == self.image1 else self.image1
+                # Apply damage to the player on collision
 
-        # Revert to image1 after 1 second
-        if self.time_of_last_change is not None and current_time - self.time_of_last_change > 100:
-            self.image = self.image1
-            self.time_of_last_change = None  # Reset the timer after reverting the image
+                player.take_damage()
+                self.time_of_last_change = current_time  # Reset the cooldown timer
 
-        # Get the current positions of the enemy and player in grid coordinates
+            # If already in collision and cooldown not passed, ensure no change
+            if self.image == self.image2:
+                if (current_time - self.time_of_last_change > self.cooldown):
+                    self.image = self.image1
+
+        # Pathfinding and movement
         enemy_pos = self.get_tile_pos(self.rect.x, self.rect.y)
         player_pos = self.get_tile_pos(player.rect.x, player.rect.y)
-
-        # Build a set of wall positions in grid coordinates
         walls = {self.get_tile_pos(tile.rect.x, tile.rect.y) for tile in tiles}
 
-        # Recalculate path if player moved to a new tile or the path is empty
         if not self.path or self.path[-1] != player_pos:
             self.path = self.bfs(enemy_pos, player_pos, walls)
 
-        # Follow the path if available
         if self.path:
             next_tile = self.path[0]
             next_x, next_y = self.get_pixel_pos(next_tile[0], next_tile[1])
 
-            # Smooth movement toward the next tile
             if self.rect.x < next_x:
                 self.rect.x = min(self.rect.x + self.speed, next_x)
             elif self.rect.x > next_x:
@@ -116,6 +118,14 @@ class Enemy(pygame.sprite.Sprite):
             elif self.rect.y > next_y:
                 self.rect.y = max(self.rect.y - self.speed, next_y)
 
-            # Check if the enemy has reached the next tile
             if self.rect.topleft == (next_x, next_y):
-                self.path.pop(0)  # Remove the reached tile from the path
+                self.path.pop(0)  # Move to the next step in the path
+
+        # # Apply damage to the player on collision
+        # if self.rect.colliderect(player.rect):
+        #     player.take_damage()
+
+        # Image reversion outside of cooldown control for more dynamic interaction
+        if self.time_of_last_change is not None and current_time - self.time_of_last_change > 100:
+            self.image = self.image1
+            self.time_of_last_change = None  # Reset timer for reverting image
