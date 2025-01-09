@@ -70,7 +70,10 @@ class Player(pygame.sprite.Sprite):
         # Revert to the correct `knight1` image after the knight2 duration
         current_time = pygame.time.get_ticks()
         if self.last_image_change_time and current_time - self.last_image_change_time > self.knight2_duration:
-            self.image = self.original_image
+            if self.facing_right:
+                self.image = self.original_image
+            else:
+                self.image = pygame.transform.flip(self.original_image, True, False)
             self.last_image_change_time = None
             self.damage_applied = False
 
@@ -87,9 +90,13 @@ class Player(pygame.sprite.Sprite):
 
     def activate_knight2(self, enemies):
         """Switch to the alternate image and damage nearby enemies."""
-        self.image = self.alternate_image if self.facing_right else pygame.transform.flip(self.alternate_image, True, False)
-        self.last_image_change_time = pygame.time.get_ticks()
+        if self.facing_right:
+            self.image = self.alternate_image
+        else:
+            self.image = pygame.transform.flip(self.alternate_image, True, False)  # Flip image if facing left
 
+        self.last_image_change_time = pygame.time.get_ticks()
+ 
         # Damage nearby enemies
         if not self.damage_applied:
             for enemy in enemies:
