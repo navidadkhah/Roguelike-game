@@ -2,7 +2,7 @@ import pygame
 import random
 from menu import main_menu
 from colors import BROWN, BLACK, WHITE, DARK_BROWN, LIGHT_BROWN, YELLOW, GREEN, RED
-from setting import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TILE_SIZE
+from setting import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TILE_SIZE, ENEMY_SIZE, ITEMS_SIZE, KNIGHT_SIZE, PORTAL_SIZE
 from Enemy1 import Enemy
 from sound import j_sound, stars_sound, back_ground_sound
 
@@ -14,21 +14,42 @@ clock = pygame.time.Clock()
 # Load heart
 full_heart_image = pygame.image.load("images/Heart/Heart.png").convert_alpha()
 full_heart_image = pygame.transform.scale(full_heart_image, (30, 30))
-half_heart_image = pygame.image.load("images/Heart/Half_heart.png").convert_alpha()
+half_heart_image = pygame.image.load(
+    "images/Heart/Half_heart.png").convert_alpha()
 half_heart_image = pygame.transform.scale(half_heart_image, (30, 30))
-empty_heart_image = pygame.image.load("images/Heart/Heart_empty.png").convert_alpha()
+empty_heart_image = pygame.image.load(
+    "images/Heart/Heart_empty.png").convert_alpha()
 empty_heart_image = pygame.transform.scale(empty_heart_image, (30, 30))
 
 # Load star images
-star_image = pygame.image.load("images/Ninja_Star/Ninja_star.png")  # Replace with your star image
-star_image = pygame.transform.scale(star_image, (20, 20))  # Adjust size as needed
+# Replace with your star image
+star_image = pygame.image.load("images/Ninja_Star/Ninja_star.png")
+star_image = pygame.transform.scale(
+    star_image, (20, 20))  # Adjust size as neededj
 
-# Load enemy 1 images
-enemy_image = pygame.image.load("images/Enemy1/Enemy1_1.png")
-enemy_image = pygame.transform.scale(enemy_image, (TILE_SIZE, TILE_SIZE))
+# Backgrounds for each level
+level_backgrounds = [
+    pygame.image.load(f"images/backgrounds/level{i+1}.png").convert() for i in range(5)
+]
+for i in range(len(level_backgrounds)):
+    level_backgrounds[i] = pygame.transform.scale(
+        level_backgrounds[i], (SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# Portal class
+
+
+class Portal(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.image.load(
+            "images/portal/portal.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (PORTAL_SIZE, PORTAL_SIZE))
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
 
 # Camera class
+
+
 class Camera:
     def __init__(self, width, height):
         self.camera = pygame.Rect(0, 0, width, height)
@@ -47,14 +68,55 @@ class Camera:
         y = max(-(self.height - SCREEN_HEIGHT), y)
         self.camera = pygame.Rect(x, y, self.width, self.height)
 
+class Star(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction, level_width):
+        super().__init__()
+        self.original_image = star_image  # Save the original image for rotation
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
+        self.angle = 0  # Initial angle for rotation
+        self.level_width = level_width  # Level width in pixels
+
+    def update(self, tiles, enemy_group):
+        # Rotate the star
+        self.angle += 10  # Adjust rotation speed as needed
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+        # Move the star
+        self.rect.x += self.direction * 10
+
+        # Remove the star if it reaches the level boundaries
+        if self.rect.right < 0 or self.rect.left > self.level_width:
+            self.kill()
+
+        # Check collision with walls (tiles)
+        if pygame.sprite.spritecollideany(self, tiles):
+            self.kill()
+
+        # Check collision with enemies
+        collided_enemies = pygame.sprite.spritecollide(self, enemy_group, False)  # Do not remove the enemy immediately
+        if collided_enemies:
+            for enemy in collided_enemies:
+                enemy.take_damage()  # Reduce enemy's health
+            self.kill()  # Remove the star after hitting the enemy
+
 # Player class
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.original_image = pygame.image.load("images/Knight/knight1.png")  # Original image
-        self.original_image = pygame.transform.scale(self.original_image, (TILE_SIZE, TILE_SIZE))
-        self.alternate_image = pygame.image.load("images/Knight/knight2.png")  # Alternate image
-        self.alternate_image = pygame.transform.scale(self.alternate_image, (TILE_SIZE, TILE_SIZE))
+        self.original_image = pygame.image.load(
+            "images/Knight/knight1.png")  # Original image
+        self.original_image = pygame.transform.scale(
+            self.original_image, (KNIGHT_SIZE, KNIGHT_SIZE))
+        self.alternate_image = pygame.image.load(
+            "images/Knight/knight2.png")  # Alternate image
+        self.alternate_image = pygame.transform.scale(
+            self.alternate_image, (KNIGHT_SIZE, KNIGHT_SIZE))
         self.image = self.original_image
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
@@ -63,7 +125,8 @@ class Player(pygame.sprite.Sprite):
         self.last_image_change_time = None  # Timer for image change
         self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
         self.damage_applied = False
-        self.health = 50  # Total health points (3 full hearts, 4 hits per heart)
+        # Total health points (3 full hearts, 4 hits per heart)
+        self.health = 50
 
     def update(self, tiles):
         self.rect.x += self.dx
@@ -79,7 +142,8 @@ class Player(pygame.sprite.Sprite):
             if self.facing_right:
                 self.image = self.original_image
             else:
-                self.image = pygame.transform.flip(self.original_image, True, False)
+                self.image = pygame.transform.flip(
+                    self.original_image, True, False)
             self.last_image_change_time = None
             self.damage_applied = False
 
@@ -88,7 +152,8 @@ class Player(pygame.sprite.Sprite):
 
         # Flip the images when changing direction
         if dx < 0 and self.facing_right:  # Moving left
-            self.image = pygame.transform.flip(self.original_image, True, False)
+            self.image = pygame.transform.flip(
+                self.original_image, True, False)
             self.facing_right = False
         elif dx > 0 and not self.facing_right:  # Moving right
             self.image = self.original_image
@@ -99,7 +164,8 @@ class Player(pygame.sprite.Sprite):
         if self.facing_right:
             self.image = self.alternate_image
         else:
-            self.image = pygame.transform.flip(self.alternate_image, True, False)  # Flip image if facing left
+            self.image = pygame.transform.flip(
+                self.alternate_image, True, False)  # Flip image if facing left
 
         self.last_image_change_time = pygame.time.get_ticks()
 
@@ -136,57 +202,7 @@ class Player(pygame.sprite.Sprite):
             else:
                 screen.blit(empty_heart_image, (heart_x, 10))
 
-
-# Tile class
-class Tile(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__()
-        self.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-        self.image.fill(BROWN)
-        self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
-
-# Star class
-class Star(pygame.sprite.Sprite):
-    def __init__(self, x, y, direction, level_width):
-        super().__init__()
-        self.original_image = star_image  # Save the original image for rotation
-        self.image = self.original_image
-        self.rect = self.image.get_rect()
-        self.rect.center = (x, y)
-        self.direction = direction
-        self.angle = 0  # Initial angle for rotation
-        self.level_width = level_width  # Level width in pixels
-
-    def update(self, tiles, enemy_group):
-        # Rotate the star
-        self.angle += 10  # Adjust rotation speed as needed
-        self.image = pygame.transform.rotate(self.original_image, self.angle)
-        self.rect = self.image.get_rect(center=self.rect.center)
-
-        # Move the star
-        self.rect.x += self.direction * 10
-
-        # Remove the star if it reaches the level boundaries
-        if self.rect.right < 0 or self.rect.left > self.level_width:
-            self.kill()
-
-        # Check collision with walls (tiles)
-        if pygame.sprite.spritecollideany(self, tiles):
-            self.kill()
-
-        # Check collision with enemies
-        collided_enemies = pygame.sprite.spritecollide(self, enemy_group, False)  # Do not remove the enemy immediately
-        if collided_enemies:
-            for enemy in collided_enemies:
-                enemy.take_damage()  # Reduce enemy's health
-            self.kill()  # Remove the star after hitting the enemy
-
-
-
-
-
-# Level generator
+# Level class
 class Level:
     def __init__(self, width, height):
         self.width = width
@@ -194,61 +210,63 @@ class Level:
         self.tiles = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.items = pygame.sprite.Group()  # For hearts or other collectibles
+        self.portal = None  # Initialize portal as None
         self.generate_level()
 
     def generate_level(self):
-        # Generate tiles
+        # Generate tiles around edges
         for x in range(0, self.width * TILE_SIZE, TILE_SIZE):
             for y in range(0, self.height * TILE_SIZE, TILE_SIZE):
-                # Outer boundary or random obstacles
-                if random.random() < 0.2 or x == 0 or y == 0 or x == (self.width - 1) * TILE_SIZE or y == (
-                        self.height - 1) * TILE_SIZE:
-                    tile = Tile(x, y)
+                if x == 0 or y == 0 or x == (self.width - 1) * TILE_SIZE or y == (self.height - 1) * TILE_SIZE:
+                    tile = pygame.sprite.Sprite()
+                    tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                    tile.image.fill(BROWN)
+                    tile.rect = tile.image.get_rect()
+                    tile.rect.topleft = (x, y)
                     self.tiles.add(tile)
 
-                # Randomly place collectible items
-                elif random.random() < 0.05:
-                    item = pygame.sprite.Sprite()
-                    item.image = full_heart_image  # Example: Heart image as collectible
-                    item.rect = item.image.get_rect()
-                    item.rect.topleft = (x, y)
-                    self.items.add(item)
+        # Randomly place collectible items
+        for _ in range(3):
+            x = random.randint(1, self.width - 2) * ITEMS_SIZE
+            y = random.randint(1, self.height - 2) * ITEMS_SIZE
+            item = pygame.sprite.Sprite()
+            item.image = full_heart_image
+            item.rect = item.image.get_rect()
+            item.rect.topleft = (x, y)
+            self.items.add(item)
 
         # Fixed number of enemies
-        num_enemies = 1  # Set the exact number of enemies you want
-        placed_enemies = 0
-        while placed_enemies < num_enemies:
-            x = random.randint(1, self.width - 2) * TILE_SIZE  # Avoid edge
-            y = random.randint(1, self.height - 2) * TILE_SIZE  # Avoid edge
+        for _ in range(3):
+            x = random.randint(1, self.width - 2) * ENEMY_SIZE
+            y = random.randint(1, self.height - 2) * ENEMY_SIZE
             enemy = Enemy(x, y)
             self.enemies.add(enemy)
-            placed_enemies += 1
 
     def draw(self, surface, camera):
-        # Draw tiles
         for tile in self.tiles:
             surface.blit(tile.image, camera.apply(tile))
-
-        # Draw items
         for item in self.items:
             surface.blit(item.image, camera.apply(item))
-
-        # Draw enemies
         for enemy in self.enemies:
             surface.blit(enemy.image, camera.apply(enemy))
+        if self.portal:
+            surface.blit(self.portal.image, camera.apply(self.portal))
 
 # Main game function
+
+
 def main():
     main_menu()
-    back_ground_sound.play(-1)  # Loop the background sound
-    player = Player(TILE_SIZE, TILE_SIZE)
-    level = Level(SCREEN_WIDTH // TILE_SIZE * 3, SCREEN_HEIGHT // TILE_SIZE * 3)
+    back_ground_sound.play(-1)
+    player = Player(KNIGHT_SIZE, KNIGHT_SIZE)
+    level_index = 0
+    level = Level(SCREEN_WIDTH // TILE_SIZE, SCREEN_HEIGHT // TILE_SIZE)
 
     all_sprites = pygame.sprite.Group()
     stars = pygame.sprite.Group()
     all_sprites.add(player)
-    all_sprites.add(level.enemies)  # Add generated enemies to all_sprites
-    all_sprites.add(level.items)  # Add items to all_sprites
+    all_sprites.add(level.enemies)
+    all_sprites.add(level.items)
 
     camera = Camera(level.width * TILE_SIZE, level.height * TILE_SIZE)
 
@@ -256,6 +274,7 @@ def main():
     last_throw_time = 0
     cooldown = 200
     running = True
+
     while running:
         current_time = pygame.time.get_ticks()
 
@@ -278,7 +297,8 @@ def main():
         if keys[pygame.K_k] and current_time - last_throw_time > cooldown and remaining_stars > 0:
             stars_sound.play()
             direction = 1 if player.facing_right else -1
-            star = Star(player.rect.centerx, player.rect.centery, direction, level.width * TILE_SIZE)
+            star = Star(player.rect.centerx, player.rect.centery,
+                        direction, level.width * TILE_SIZE)
             stars.add(star)
             all_sprites.add(star)
             last_throw_time = current_time
@@ -288,39 +308,46 @@ def main():
             j_sound.play()
             player.activate_knight2(level.enemies)
 
-        # player.reset_damage_flag()
-
-        # Update all entities
         player.update(level.tiles)
         stars.update(level.tiles, level.enemies)
 
-        # Update each enemy in the level
         for enemy in level.enemies:
-            # enemy.time_of_last_change = pygame.time.get_ticks()
             enemy.update(player, level.tiles)
 
         camera.update(player)
 
-        # Check for item collection
-        collected_items = pygame.sprite.spritecollide(player, level.items, True)
+        collected_items = pygame.sprite.spritecollide(
+            player, level.items, True)
         for item in collected_items:
-            remaining_stars += 1  # Example: Increment star count on item collection
+            remaining_stars += 1
 
-        # Draw the screen
-        screen.fill(GREEN)
+        if not level.enemies and not level.portal:
+            level.portal = Portal(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+            all_sprites.add(level.portal)
+
+        if level.portal and pygame.sprite.spritecollideany(player, [level.portal]):
+            level_index += 1
+            if level_index >= len(level_backgrounds):
+                print("You won!")
+                running = False
+            else:
+                level = Level(SCREEN_WIDTH // TILE_SIZE,
+                              SCREEN_HEIGHT // TILE_SIZE)
+                all_sprites.empty()
+                all_sprites.add(player, level.enemies, level.items)
+
+        screen.blit(level_backgrounds[level_index], (0, 0))
         level.draw(screen, camera)
+
         for sprite in all_sprites:
             screen.blit(sprite.image, camera.apply(sprite))
 
         player.draw_health(screen)
 
-        # for i in range(3):  # Draw 3 hearts
-        #     screen.blit(full_heart_image, (10 + i * 40, 10))
-
-        screen.blit(star_image, (15, 53))  # Draw star icon
+        screen.blit(star_image, (15, 53))
         font = pygame.font.Font(None, 36)
-        stars_text = font.render(f"x {remaining_stars}", True, (255, 255, 255))
-        screen.blit(stars_text, (45, 50))  # Draw remaining stars
+        stars_text = font.render(f"x {remaining_stars}", True, WHITE)
+        screen.blit(stars_text, (45, 50))
 
         pygame.display.flip()
         clock.tick(FPS)
