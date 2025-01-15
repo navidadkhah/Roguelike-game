@@ -22,10 +22,9 @@ empty_heart_image = pygame.image.load(
 empty_heart_image = pygame.transform.scale(empty_heart_image, (30, 30))
 
 # Load star images
-# Replace with your star image
 star_image = pygame.image.load("images/Ninja_Star/Ninja_star.png")
 star_image = pygame.transform.scale(
-    star_image, (20, 20))  # Adjust size as neededj
+    star_image, (20, 20))  # Adjust size as needed
 
 # Backgrounds for each level
 level_backgrounds = [
@@ -43,7 +42,8 @@ class Portal(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.image.load(
             "images/portal/portal.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (PORTAL_SIZE, PORTAL_SIZE))
+        self.image = pygame.transform.scale(
+            self.image, (PORTAL_SIZE, PORTAL_SIZE))
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
 
@@ -57,16 +57,39 @@ class Camera:
         self.height = height
 
     def apply(self, entity):
+        """Adjust the position of an entity relative to the camera."""
         return entity.rect.move(self.camera.topleft)
 
     def update(self, target):
+        """Update the camera's position to follow the target (player)."""
+        # Calculate the camera's new position
         x = -target.rect.centerx + SCREEN_WIDTH // 2
         y = -target.rect.centery + SCREEN_HEIGHT // 2
-        x = min(0, x)
+
+        # Debug: Print target (player) position and calculated camera position
+        print(f"Target Center: ({target.rect.centerx}, {target.rect.centery})")
+        print(f"Calculated Camera Position: ({x}, {y})")
+
+        # Limit scrolling to map boundaries
+        # Left edge: x should not be less than -(level width - screen width)
         x = max(-(self.width - SCREEN_WIDTH), x)
-        y = min(0, y)
+        # Right edge: x should not be greater than 0
+        x = min(0, x)
+
+        # Top edge: y should not be less than -(level height - screen height)
         y = max(-(self.height - SCREEN_HEIGHT), y)
+        # Bottom edge: y should not be greater than 0
+        y = min(0, y)
+
+        # Debug: Print clamped camera position
+        print(f"Clamped Camera Position: ({x}, {y})")
+
+        # Update the camera's position
         self.camera = pygame.Rect(x, y, self.width, self.height)
+
+        # Debug: Print final camera position
+        print(f"Final Camera Position: {self.camera.topleft}")
+
 
 class Star(pygame.sprite.Sprite):
     def __init__(self, x, y, direction, level_width):
@@ -97,7 +120,8 @@ class Star(pygame.sprite.Sprite):
             self.kill()
 
         # Check collision with enemies
-        collided_enemies = pygame.sprite.spritecollide(self, enemy_group, False)  # Do not remove the enemy immediately
+        collided_enemies = pygame.sprite.spritecollide(
+            self, enemy_group, False)  # Do not remove the enemy immediately
         if collided_enemies:
             for enemy in collided_enemies:
                 enemy.take_damage()  # Reduce enemy's health
@@ -181,7 +205,7 @@ class Player(pygame.sprite.Sprite):
         player_center = self.rect.center
         enemy_center = enemy.rect.center
         distance = pygame.math.Vector2(player_center).distance_to(enemy_center)
-        return distance < 75 # Adjust the range as needed
+        return distance < 75  # Adjust the range as needed
 
     def take_damage(self):
         """Reduce health and manage heart images."""
@@ -203,6 +227,8 @@ class Player(pygame.sprite.Sprite):
                 screen.blit(empty_heart_image, (heart_x, 10))
 
 # Level class
+
+
 class Level:
     def __init__(self, width, height, level_index):
         self.width = width
@@ -215,21 +241,38 @@ class Level:
         self.generate_level()
 
     def generate_level(self):
-        # Generate tiles around edges
-        for x in range(0, self.width * TILE_SIZE, TILE_SIZE):
-            for y in range(0, self.height * TILE_SIZE, TILE_SIZE):
-                if x == 0 or y == 0 or x == (self.width - 1) * TILE_SIZE or y == (self.height - 1) * TILE_SIZE:
+        # Define a grid for the level
+        grid = [[0 for _ in range(self.width)] for _ in range(self.height)]
+
+        # Add walls around the edges
+        for x in range(self.width):
+            grid[0][x] = 1  # Top wall
+            grid[self.height - 1][x] = 1  # Bottom wall
+        for y in range(self.height):
+            grid[y][0] = 1  # Left wall
+            grid[y][self.width - 1] = 1  # Right wall
+
+        # Add random walls and open spaces
+        for y in range(1, self.height - 1):
+            for x in range(1, self.width - 1):
+                if random.random() < 0.2:  # 20% chance to place a wall
+                    grid[y][x] = 1
+
+        # Convert the grid to tiles
+        for y in range(self.height):
+            for x in range(self.width):
+                if grid[y][x] == 1:
                     tile = pygame.sprite.Sprite()
                     tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
                     tile.image.fill(BROWN)
                     tile.rect = tile.image.get_rect()
-                    tile.rect.topleft = (x, y)
+                    tile.rect.topleft = (x * TILE_SIZE, y * TILE_SIZE)
                     self.tiles.add(tile)
 
         # Add collectible items
         for _ in range(3):
-            x = random.randint(1, self.width - 2) * ITEMS_SIZE
-            y = random.randint(1, self.height - 2) * ITEMS_SIZE
+            x = random.randint(1, self.width - 2) * TILE_SIZE
+            y = random.randint(1, self.height - 2) * TILE_SIZE
             item = pygame.sprite.Sprite()
             item.image = full_heart_image
             item.rect = item.image.get_rect()
@@ -238,8 +281,8 @@ class Level:
 
         # Spawn enemies based on level
         for _ in range(3):
-            x = random.randint(1, self.width - 2) * ENEMY_SIZE
-            y = random.randint(1, self.height - 2) * ENEMY_SIZE
+            x = random.randint(1, self.width - 2) * TILE_SIZE
+            y = random.randint(1, self.height - 2) * TILE_SIZE
             if self.level_index == 0:
                 enemy = Enemy(x, y)
             elif self.level_index == 1:
@@ -266,7 +309,6 @@ class Level:
         if self.portal:
             surface.blit(self.portal.image, camera.apply(self.portal))
 
-
 # Main game function
 
 
@@ -275,7 +317,8 @@ def main():
     back_ground_sound.play(-1)
     player = Player(KNIGHT_SIZE, KNIGHT_SIZE)
     level_index = 0
-    level = Level(SCREEN_WIDTH // TILE_SIZE, SCREEN_HEIGHT // TILE_SIZE, level_index)
+    level = Level(SCREEN_WIDTH // TILE_SIZE,
+                  SCREEN_HEIGHT // TILE_SIZE, level_index)
 
     all_sprites = pygame.sprite.Group()
     stars = pygame.sprite.Group()
@@ -329,7 +372,12 @@ def main():
         for enemy in level.enemies:
             enemy.update(player, level.tiles)
 
+        # Update the camera to follow the player
         camera.update(player)
+
+        # Debug: Print player and camera positions
+        print(f"Player Position: {player.rect.topleft}")
+        print(f"Camera Position: {camera.camera.topleft}")
 
         collected_items = pygame.sprite.spritecollide(
             player, level.items, True)
@@ -351,10 +399,16 @@ def main():
                 all_sprites.empty()
                 all_sprites.add(player, level.enemies, level.items)
 
+        # Draw everything relative to the camera
+        # Draw background without camera offset
         screen.blit(level_backgrounds[level_index], (0, 0))
+        # Draw tiles, items, enemies, and portal with camera offset
         level.draw(screen, camera)
 
         for sprite in all_sprites:
+            # Debug: Print sprite positions after applying camera offset
+            print(f"Sprite Position: {camera.apply(sprite).topleft}")
+            # Draw player and stars with camera offset
             screen.blit(sprite.image, camera.apply(sprite))
 
         player.draw_health(screen)

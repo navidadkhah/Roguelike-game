@@ -45,7 +45,7 @@ class Enemy(pygame.sprite.Sprite):
 
         # Position the health bar closer to the enemy
         bar_x = self.rect.x
-        bar_y = self.rect.y - bar_height + 45  # Adjust the -2 to control the distance
+        bar_y = self.rect.y - bar_height + 10  # Adjust the -2 to control the distance
 
         # Draw the background and foreground of the health bar
         pygame.draw.rect(surface, (255, 0, 0), (bar_x, bar_y,
