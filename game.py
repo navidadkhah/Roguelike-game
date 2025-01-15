@@ -3,7 +3,7 @@ import random
 from menu import main_menu
 from colors import BROWN, BLACK, WHITE, DARK_BROWN, LIGHT_BROWN, YELLOW, GREEN, RED
 from setting import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TILE_SIZE, ENEMY_SIZE, ITEMS_SIZE, KNIGHT_SIZE, PORTAL_SIZE
-from Enemy1 import Enemy
+from Enemy1 import Enemy, Enemy2, Enemy3, BossEnemy
 from sound import j_sound, stars_sound, back_ground_sound
 
 # Initialize Pygame
@@ -181,7 +181,7 @@ class Player(pygame.sprite.Sprite):
         player_center = self.rect.center
         enemy_center = enemy.rect.center
         distance = pygame.math.Vector2(player_center).distance_to(enemy_center)
-        return distance < 100  # Adjust the range as needed
+        return distance < 75 # Adjust the range as needed
 
     def take_damage(self):
         """Reduce health and manage heart images."""
@@ -204,13 +204,14 @@ class Player(pygame.sprite.Sprite):
 
 # Level class
 class Level:
-    def __init__(self, width, height):
+    def __init__(self, width, height, level_index):
         self.width = width
         self.height = height
         self.tiles = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
-        self.items = pygame.sprite.Group()  # For hearts or other collectibles
-        self.portal = None  # Initialize portal as None
+        self.items = pygame.sprite.Group()
+        self.portal = None
+        self.level_index = level_index
         self.generate_level()
 
     def generate_level(self):
@@ -225,7 +226,7 @@ class Level:
                     tile.rect.topleft = (x, y)
                     self.tiles.add(tile)
 
-        # Randomly place collectible items
+        # Add collectible items
         for _ in range(3):
             x = random.randint(1, self.width - 2) * ITEMS_SIZE
             y = random.randint(1, self.height - 2) * ITEMS_SIZE
@@ -235,11 +236,23 @@ class Level:
             item.rect.topleft = (x, y)
             self.items.add(item)
 
-        # Fixed number of enemies
+        # Spawn enemies based on level
         for _ in range(3):
             x = random.randint(1, self.width - 2) * ENEMY_SIZE
             y = random.randint(1, self.height - 2) * ENEMY_SIZE
-            enemy = Enemy(x, y)
+            if self.level_index == 0:
+                enemy = Enemy(x, y)
+            elif self.level_index == 1:
+                enemy = random.choice([Enemy(x, y), Enemy2(x, y)])
+            elif self.level_index == 2:
+                enemy = random.choice([Enemy2(x, y), Enemy3(x, y)])
+            elif self.level_index == 3:
+                enemy = random.choice([Enemy3(x, y)])
+            elif self.level_index == 4:  # Boss level
+                if not self.enemies:
+                    enemy = BossEnemy(x, y)
+                else:
+                    enemy = Enemy3(x, y)
             self.enemies.add(enemy)
 
     def draw(self, surface, camera):
@@ -249,8 +262,10 @@ class Level:
             surface.blit(item.image, camera.apply(item))
         for enemy in self.enemies:
             surface.blit(enemy.image, camera.apply(enemy))
+            enemy.draw_health_bar(surface)  # Draw the health bar
         if self.portal:
             surface.blit(self.portal.image, camera.apply(self.portal))
+
 
 # Main game function
 
@@ -260,7 +275,7 @@ def main():
     back_ground_sound.play(-1)
     player = Player(KNIGHT_SIZE, KNIGHT_SIZE)
     level_index = 0
-    level = Level(SCREEN_WIDTH // TILE_SIZE, SCREEN_HEIGHT // TILE_SIZE)
+    level = Level(SCREEN_WIDTH // TILE_SIZE, SCREEN_HEIGHT // TILE_SIZE, level_index)
 
     all_sprites = pygame.sprite.Group()
     stars = pygame.sprite.Group()
@@ -332,7 +347,7 @@ def main():
                 running = False
             else:
                 level = Level(SCREEN_WIDTH // TILE_SIZE,
-                              SCREEN_HEIGHT // TILE_SIZE)
+                              SCREEN_HEIGHT // TILE_SIZE, level_index)
                 all_sprites.empty()
                 all_sprites.add(player, level.enemies, level.items)
 
