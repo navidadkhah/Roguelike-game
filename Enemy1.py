@@ -1,5 +1,5 @@
 from setting import TILE_SIZE
-from colors import RED, GREEN
+from colors import RED, GREEN, WHITE
 from collections import deque
 import pygame
 
@@ -29,6 +29,7 @@ class Enemy(pygame.sprite.Sprite):
         self.time_of_last_change = pygame.time.get_ticks()
         self.path = []  # Pathfinding
 
+
     def take_damage(self):
         """Reduce health and check if the enemy is dead."""
         self.health -= 1
@@ -36,22 +37,22 @@ class Enemy(pygame.sprite.Sprite):
             self.kill()
 
     def draw_health_bar(self, surface):
-        """Draw the enemy's health bar closer to the enemy."""
-        bar_width = 100  # Fixed width for health bar
-        bar_height = 5
-        health_ratio = self.health / self.max_health  # Scale based on max health
-        # Adjust width based on current health
-        current_bar_width = int(bar_width * health_ratio)
+        bar_length = 50  # Length of the health bar
+        bar_height = 5  # Height of the health bar
+        fill = (self.health / self.max_health) * bar_length
 
-        # Position the health bar closer to the enemy
-        bar_x = self.rect.x
-        bar_y = self.rect.y - bar_height + 10  # Adjust the -2 to control the distance
+        # Health bar's x is the same as the enemy's x
+        # Health bar's y is one pixel above the enemy's top
+        health_bar_x = self.rect.x + 300
+        health_bar_y = self.rect.y + 170
 
-        # Draw the background and foreground of the health bar
-        pygame.draw.rect(surface, (255, 0, 0), (bar_x, bar_y,
-                         bar_width, bar_height))  # Red background
-        pygame.draw.rect(surface, (0, 255, 0), (bar_x, bar_y,
-                         current_bar_width, bar_height))  # Green foreground
+        # Create the rectangles for the health bar
+        fill_rect = pygame.Rect(health_bar_x, health_bar_y, fill, bar_height)
+        outline_rect = pygame.Rect(health_bar_x, health_bar_y, bar_length, bar_height)
+
+        # Draw the health bar on the surface
+        pygame.draw.rect(surface, RED, fill_rect)
+        pygame.draw.rect(surface, WHITE, outline_rect, 1)
 
     def update(self, player, tiles):
         """Update enemy movement and handle interaction with the player."""

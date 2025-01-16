@@ -35,8 +35,6 @@ for i in range(len(level_backgrounds)):
         level_backgrounds[i], (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Portal class
-
-
 class Portal(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -48,47 +46,33 @@ class Portal(pygame.sprite.Sprite):
         self.rect.center = (x, y)
 
 # Camera class
-
-
 class Camera:
     def __init__(self, width, height):
         self.camera = pygame.Rect(0, 0, width, height)
         self.width = width
         self.height = height
 
-    def apply(self, entity):
-        """Adjust the position of an entity relative to the camera."""
-        return entity.rect.move(self.camera.topleft)
+
+    def apply(self, target):
+        """Applies the camera offset to the entity's position."""
+        if isinstance(target, pygame.Rect):
+            return target.move(-self.camera.x, -self.camera.y)
+        elif isinstance(target, pygame.sprite.Sprite):
+            # Create a new rect for the sprite based on the camera offset
+            return target.rect.move(self.camera.x, self.camera.y)
+        else:
+            raise TypeError("Unsupported target type for camera application")
+        # return rect.move(-self.camera.x, -self.camera.y)
+
+    def apply_to_health_bar(self, x, y):
+        """Adjusts x, y coordinates for health bars based on the camera's position."""
+        return (x - self.camera.x, y - self.camera.y)
 
     def update(self, target):
-        """Update the camera's position to follow the target (player)."""
-        # Calculate the camera's new position
+        """Updates the camera to center on the target (player)."""
         x = -target.rect.centerx + SCREEN_WIDTH // 2
         y = -target.rect.centery + SCREEN_HEIGHT // 2
-
-        # Debug: Print target (player) position and calculated camera position
-        print(f"Target Center: ({target.rect.centerx}, {target.rect.centery})")
-        print(f"Calculated Camera Position: ({x}, {y})")
-
-        # Limit scrolling to map boundaries
-        # Left edge: x should not be less than -(level width - screen width)
-        x = max(-(self.width - SCREEN_WIDTH), x)
-        # Right edge: x should not be greater than 0
-        x = min(0, x)
-
-        # Top edge: y should not be less than -(level height - screen height)
-        y = max(-(self.height - SCREEN_HEIGHT), y)
-        # Bottom edge: y should not be greater than 0
-        y = min(0, y)
-
-        # Debug: Print clamped camera position
-        print(f"Clamped Camera Position: ({x}, {y})")
-
-        # Update the camera's position
         self.camera = pygame.Rect(x, y, self.width, self.height)
-
-        # Debug: Print final camera position
-        print(f"Final Camera Position: {self.camera.topleft}")
 
 
 class Star(pygame.sprite.Sprite):
@@ -128,77 +112,67 @@ class Star(pygame.sprite.Sprite):
             self.kill()  # Remove the star after hitting the enemy
 
 # Player class
-
-
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__()
-        self.original_image = pygame.image.load(
-            "images/Knight/knight1.png")  # Original image
-        self.original_image = pygame.transform.scale(
-            self.original_image, (KNIGHT_SIZE, KNIGHT_SIZE))
-        self.alternate_image = pygame.image.load(
-            "images/Knight/knight2.png")  # Alternate image
-        self.alternate_image = pygame.transform.scale(
-            self.alternate_image, (KNIGHT_SIZE, KNIGHT_SIZE))
-        self.image = self.original_image
-        self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
-        self.dx, self.dy = 0, 0
-        self.facing_right = True  # Track the direction the player is facing
-        self.last_image_change_time = None  # Timer for image change
-        self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
-        self.damage_applied = False
-        # Total health points (3 full hearts, 4 hits per heart)
-        self.health = 50
+            super().__init__()
+            self.original_image = pygame.image.load("images/Knight/knight1.png")  # Original image
+            self.original_image = pygame.transform.scale(self.original_image, (KNIGHT_SIZE, KNIGHT_SIZE))
+            self.alternate_image = pygame.image.load("images/Knight/knight2.png")  # Alternate image
+            self.alternate_image = pygame.transform.scale(self.alternate_image, (KNIGHT_SIZE, KNIGHT_SIZE))
+            self.image = self.original_image
+            self.rect = self.image.get_rect()
+            self.rect.topleft = (x, y)
+            self.dx, self.dy = 0, 0
+            self.facing_right = True  # Track the direction the player is facing
+            self.last_image_change_time = None  # Timer for image change
+            self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
+            self.damage_applied = False
+            self.health = 50  # Total health points (3 full hearts, 4 hits per heart)
 
     def update(self, tiles):
-        self.rect.x += self.dx
-        if pygame.sprite.spritecollideany(self, tiles):
-            self.rect.x -= self.dx
-        self.rect.y += self.dy
-        if pygame.sprite.spritecollideany(self, tiles):
-            self.rect.y -= self.dy
+            self.rect.x += self.dx
+            if pygame.sprite.spritecollideany(self, tiles):
+                self.rect.x -= self.dx
+            self.rect.y += self.dy
+            if pygame.sprite.spritecollideany(self, tiles):
+                self.rect.y -= self.dy
 
-        # Revert to the correct `knight1` image after the knight2 duration
-        current_time = pygame.time.get_ticks()
-        if self.last_image_change_time and current_time - self.last_image_change_time > self.knight2_duration:
-            if self.facing_right:
-                self.image = self.original_image
-            else:
-                self.image = pygame.transform.flip(
-                    self.original_image, True, False)
-            self.last_image_change_time = None
-            self.damage_applied = False
+            # Revert to the correct `knight1` image after the knight2 duration
+            current_time = pygame.time.get_ticks()
+            if self.last_image_change_time and current_time - self.last_image_change_time > self.knight2_duration:
+                if self.facing_right:
+                    self.image = self.original_image
+                else:
+                    self.image = pygame.transform.flip(self.original_image, True, False)
+                self.last_image_change_time = None
+                self.damage_applied = False
 
     def move(self, dx, dy):
-        self.dx, self.dy = dx, dy
+            self.dx, self.dy = dx, dy
 
-        # Flip the images when changing direction
-        if dx < 0 and self.facing_right:  # Moving left
-            self.image = pygame.transform.flip(
-                self.original_image, True, False)
-            self.facing_right = False
-        elif dx > 0 and not self.facing_right:  # Moving right
-            self.image = self.original_image
-            self.facing_right = True
+            # Flip the images when changing direction
+            if dx < 0 and self.facing_right:  # Moving left
+                self.image = pygame.transform.flip(self.original_image, True, False)
+                self.facing_right = False
+            elif dx > 0 and not self.facing_right:  # Moving right
+                self.image = self.original_image
+                self.facing_right = True
 
     def activate_knight2(self, enemies):
-        """Switch to the alternate image and damage nearby enemies."""
-        if self.facing_right:
-            self.image = self.alternate_image
-        else:
-            self.image = pygame.transform.flip(
-                self.alternate_image, True, False)  # Flip image if facing left
+            """Switch to the alternate image and damage nearby enemies."""
+            if self.facing_right:
+                self.image = self.alternate_image
+            else:
+                self.image = pygame.transform.flip(self.alternate_image, True, False)  # Flip image if facing left
 
-        self.last_image_change_time = pygame.time.get_ticks()
+            self.last_image_change_time = pygame.time.get_ticks()
 
-        # Damage nearby enemies
-        if not self.damage_applied:
-            for enemy in enemies:
-                if self.is_nearby(enemy):
-                    enemy.take_damage()  # Damage enemy
-            self.damage_applied = True
+            # Damage nearby enemies
+            if not self.damage_applied:
+                for enemy in enemies:
+                    if self.is_nearby(enemy):
+                        enemy.take_damage()  # Damage enemy
+                self.damage_applied = True
 
     def is_nearby(self, enemy):
         """Check if an enemy is within a certain range of the player."""
@@ -227,12 +201,11 @@ class Player(pygame.sprite.Sprite):
                 screen.blit(empty_heart_image, (heart_x, 10))
 
 # Level class
-
-
 class Level:
     def __init__(self, width, height, level_index):
-        self.width = width
-        self.height = height
+        # Increase the level dimensions by a factor (e.g., 2x the original size)
+        self.width = width * 2
+        self.height = height * 2
         self.tiles = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.items = pygame.sprite.Group()
@@ -241,10 +214,10 @@ class Level:
         self.generate_level()
 
     def generate_level(self):
-        # Define a grid for the level
+        # Adjusted grid for the larger level
         grid = [[0 for _ in range(self.width)] for _ in range(self.height)]
 
-        # Add walls around the edges
+        # Define walls and obstacles
         for x in range(self.width):
             grid[0][x] = 1  # Top wall
             grid[self.height - 1][x] = 1  # Bottom wall
@@ -252,10 +225,10 @@ class Level:
             grid[y][0] = 1  # Left wall
             grid[y][self.width - 1] = 1  # Right wall
 
-        # Add random walls and open spaces
+        # More complex or larger patterns of walls and open spaces
         for y in range(1, self.height - 1):
             for x in range(1, self.width - 1):
-                if random.random() < 0.2:  # 20% chance to place a wall
+                if random.random() < 0.15:  # Adjust randomness for wall placement
                     grid[y][x] = 1
 
         # Convert the grid to tiles
@@ -269,8 +242,10 @@ class Level:
                     tile.rect.topleft = (x * TILE_SIZE, y * TILE_SIZE)
                     self.tiles.add(tile)
 
-        # Add collectible items
-        for _ in range(3):
+        # Place items and enemies considering the increased map size
+        num_items = 5  # Increase the number of collectible items
+        num_enemies = 5  # Adjust number of enemies based on level size and complexity
+        for _ in range(num_items):
             x = random.randint(1, self.width - 2) * TILE_SIZE
             y = random.randint(1, self.height - 2) * TILE_SIZE
             item = pygame.sprite.Sprite()
@@ -279,23 +254,11 @@ class Level:
             item.rect.topleft = (x, y)
             self.items.add(item)
 
-        # Spawn enemies based on level
-        for _ in range(3):
+        for _ in range(num_enemies):
             x = random.randint(1, self.width - 2) * TILE_SIZE
             y = random.randint(1, self.height - 2) * TILE_SIZE
-            if self.level_index == 0:
-                enemy = Enemy(x, y)
-            elif self.level_index == 1:
-                enemy = random.choice([Enemy(x, y), Enemy2(x, y)])
-            elif self.level_index == 2:
-                enemy = random.choice([Enemy2(x, y), Enemy3(x, y)])
-            elif self.level_index == 3:
-                enemy = random.choice([Enemy3(x, y)])
-            elif self.level_index == 4:  # Boss level
-                if not self.enemies:
-                    enemy = BossEnemy(x, y)
-                else:
-                    enemy = Enemy3(x, y)
+            enemy_choice = random.choice([Enemy, Enemy2, Enemy3]) if self.level_index < 4 else Enemy3
+            enemy = enemy_choice(x, y)
             self.enemies.add(enemy)
 
     def draw(self, surface, camera):
@@ -310,8 +273,6 @@ class Level:
             surface.blit(self.portal.image, camera.apply(self.portal))
 
 # Main game function
-
-
 def main():
     main_menu()
     back_ground_sound.play(-1)
@@ -370,9 +331,11 @@ def main():
         stars.update(level.tiles, level.enemies)
 
         for enemy in level.enemies:
-            enemy.update(player, level.tiles)
+            enemy.update(player, level.tiles)  # Assuming you have some logic to update enemy state
+            screen.blit(enemy.image, enemy.rect)  # Draw the enemy
+            enemy.draw_health_bar(screen)  # Draw the health bar directly above the enemy
 
-        # Update the camera to follow the player
+                # Update the camera to follow the player
         camera.update(player)
 
         # Debug: Print player and camera positions
