@@ -268,7 +268,7 @@ class Level:
             surface.blit(item.image, camera.apply(item))
         for enemy in self.enemies:
             surface.blit(enemy.image, camera.apply(enemy))
-            enemy.draw_health_bar(surface)  # Draw the health bar
+            enemy.draw_health_bar(surface, camera)  # Draw the health bar
         if self.portal:
             surface.blit(self.portal.image, camera.apply(self.portal))
 
@@ -331,11 +331,11 @@ def main():
         stars.update(level.tiles, level.enemies)
 
         for enemy in level.enemies:
-            enemy.update(player, level.tiles)  # Assuming you have some logic to update enemy state
-            screen.blit(enemy.image, enemy.rect)  # Draw the enemy
-            enemy.draw_health_bar(screen)  # Draw the health bar directly above the enemy
+            enemy.update(player, level.tiles)  # Update enemy logic
+            screen.blit(enemy.image, camera.apply(enemy.rect))  # Draw enemy at camera-adjusted position
+            enemy.draw_health_bar(screen, camera)  # Draw health bar at camera-adjusted position
 
-                # Update the camera to follow the player
+            # Update the camera to follow the player
         camera.update(player)
 
         # Debug: Print player and camera positions
