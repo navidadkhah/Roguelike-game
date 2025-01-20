@@ -37,25 +37,26 @@ class Enemy(pygame.sprite.Sprite):
             self.kill()
 
     def draw_health_bar(self, surface, camera):
-        bar_length = 50  # Length of the health bar
-        bar_height = 5  # Height of the health bar
-        fill = (self.health / self.max_health) * bar_length
-
-        # Position health bar right above the enemy's head without any arbitrary offsets
-        health_bar_x = -self.rect.centerx + bar_length // 2
-        health_bar_y = -self.rect.top + bar_height - 10  # Positioned 10 pixels above the enemy
-
-        # Create the rectangles for the health bar
-        fill_rect = pygame.Rect(health_bar_x, health_bar_y, fill, bar_height)
-        outline_rect = pygame.Rect(health_bar_x, health_bar_y, bar_length, bar_height)
-
-        # Apply camera transformation to adjust health bar position based on camera's view
-        fill_rect = camera.apply(fill_rect)
-        outline_rect = camera.apply(outline_rect)
-
-        # Draw the health bar on the surface
-        pygame.draw.rect(surface, RED, fill_rect)
-        pygame.draw.rect(surface, WHITE, outline_rect, 1)
+        pass
+    #     bar_length = 50  # Length of the health bar
+    #     bar_height = 5  # Height of the health bar
+    #     fill = (self.health / self.max_health) * bar_length
+    #
+    #     # Position health bar right above the enemy's head without any arbitrary offsets
+    #     health_bar_x = -self.rect.centerx + bar_length // 2
+    #     health_bar_y = -self.rect.top + bar_height - 10  # Positioned 10 pixels above the enemy
+    #
+    #     # Create the rectangles for the health bar
+    #     fill_rect = pygame.Rect(health_bar_x, health_bar_y, fill, bar_height)
+    #     outline_rect = pygame.Rect(health_bar_x, health_bar_y, bar_length, bar_height)
+    #
+    #     # Apply camera transformation to adjust health bar position based on camera's view
+    #     fill_rect = camera.apply(fill_rect)
+    #     outline_rect = camera.apply(outline_rect)
+    #
+    #     # Draw the health bar on the surface
+    #     pygame.draw.rect(surface, RED, fill_rect)
+    #     pygame.draw.rect(surface, WHITE, outline_rect, 1)
 
     def update(self, player, tiles):
         """Update enemy movement and handle interaction with the player."""
