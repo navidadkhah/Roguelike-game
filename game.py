@@ -21,6 +21,9 @@ empty_heart_image = pygame.image.load(
     "images/Heart/Heart_empty.png").convert_alpha()
 empty_heart_image = pygame.transform.scale(empty_heart_image, (30, 30))
 
+coin = pygame.image.load("images/Coin/Coin.png").convert_alpha()
+coin = pygame.transform.scale(coin, (30, 30))
+
 # Load star images
 star_image = pygame.image.load("images/Ninja_Star/Ninja_star.png")
 star_image = pygame.transform.scale(
@@ -249,7 +252,7 @@ class Level:
             x = random.randint(1, self.width - 2) * TILE_SIZE
             y = random.randint(1, self.height - 2) * TILE_SIZE
             item = pygame.sprite.Sprite()
-            item.image = full_heart_image
+            item.image = coin
             item.rect = item.image.get_rect()
             item.rect.topleft = (x, y)
             self.items.add(item)
@@ -290,6 +293,7 @@ def main():
     camera = Camera(level.width * TILE_SIZE, level.height * TILE_SIZE)
 
     remaining_stars = 10
+    remaining_coins = 0
     last_throw_time = 0
     cooldown = 200
     running = True
@@ -345,7 +349,7 @@ def main():
         collected_items = pygame.sprite.spritecollide(
             player, level.items, True)
         for item in collected_items:
-            remaining_stars += 1
+            remaining_coins += 1
 
         if not level.enemies and not level.portal:
             level.portal = Portal(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -380,6 +384,11 @@ def main():
         font = pygame.font.Font(None, 36)
         stars_text = font.render(f"x {remaining_stars}", True, WHITE)
         screen.blit(stars_text, (45, 50))
+
+        screen.blit(coin, (10, 80))
+        font = pygame.font.Font(None, 36)
+        stars_text = font.render(f"x {remaining_coins}", True, WHITE)
+        screen.blit(stars_text, (45, 83))
 
         pygame.display.flip()
         clock.tick(FPS)
