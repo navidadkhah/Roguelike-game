@@ -205,8 +205,7 @@ class Player(pygame.sprite.Sprite):
 
 # Level class
 class Level:
-    def __init__(self, width, height, level_index):
-        # Increase the level dimensions by a factor (e.g., 2x the original size)
+    def __init__(self, width, height, level_index, knight_start=(100, 100), safe_zone=2):
         self.width = width * 2
         self.height = height * 2
         self.tiles = pygame.sprite.Group()
@@ -214,10 +213,11 @@ class Level:
         self.items = pygame.sprite.Group()
         self.portal = None
         self.level_index = level_index
+        self.knight_start = knight_start
+        self.safe_zone = safe_zone
         self.generate_level()
 
     def generate_level(self):
-        # Adjusted grid for the larger level
         grid = [[0 for _ in range(self.width)] for _ in range(self.height)]
 
         # Define walls and obstacles
@@ -228,10 +228,18 @@ class Level:
             grid[y][0] = 1  # Left wall
             grid[y][self.width - 1] = 1  # Right wall
 
+        knight_x_tile = self.knight_start[0] // TILE_SIZE
+        knight_y_tile = self.knight_start[1] // TILE_SIZE
+
         # More complex or larger patterns of walls and open spaces
         for y in range(1, self.height - 1):
             for x in range(1, self.width - 1):
-                if random.random() < 0.15:  # Adjust randomness for wall placement
+                # Ensure no tiles are placed within the safe zone
+                if (
+                    random.random() < 0.15 and
+                    not (knight_x_tile - self.safe_zone <= x <= knight_x_tile + self.safe_zone and
+                         knight_y_tile - self.safe_zone <= y <= knight_y_tile + self.safe_zone)
+                ):
                     grid[y][x] = 1
 
         # Convert the grid to tiles
@@ -246,8 +254,8 @@ class Level:
                     self.tiles.add(tile)
 
         # Place items and enemies considering the increased map size
-        num_items = 5  # Increase the number of collectible items
-        num_enemies = 5  # Adjust number of enemies based on level size and complexity
+        num_items = 5
+        num_enemies = 5
         for _ in range(num_items):
             x = random.randint(1, self.width - 2) * TILE_SIZE
             y = random.randint(1, self.height - 2) * TILE_SIZE
@@ -361,6 +369,7 @@ def main():
                 print("You won!")
                 running = False
             else:
+                player.rect.topleft = (100, 100)
                 level = Level(SCREEN_WIDTH // TILE_SIZE,
                               SCREEN_HEIGHT // TILE_SIZE, level_index)
                 all_sprites.empty()
