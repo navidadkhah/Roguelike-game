@@ -131,6 +131,8 @@ class Player(pygame.sprite.Sprite):
             self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
             self.damage_applied = False
             self.health = 50  # Total health points (3 full hearts, 4 hits per heart)
+            self.coins = 0
+            self.stars = 10
 
     def update(self, tiles):
             self.rect.x += self.dx
@@ -203,6 +205,18 @@ class Player(pygame.sprite.Sprite):
             else:
                 screen.blit(empty_heart_image, (heart_x, 10))
 
+class Shop(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.image.load("images/shop/shop.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (TILE_SIZE, TILE_SIZE))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+
+    def draw(self, screen, camera):
+        screen.blit(self.image, camera.apply(self))
+
+
 # Level class
 class Level:
     def __init__(self, width, height, level_index, knight_start=(100, 100), safe_zone=2):
@@ -215,6 +229,7 @@ class Level:
         self.level_index = level_index
         self.knight_start = knight_start
         self.safe_zone = safe_zone
+        self.shop = None
         self.generate_level()
 
     def generate_level(self):
@@ -231,10 +246,8 @@ class Level:
         knight_x_tile = self.knight_start[0] // TILE_SIZE
         knight_y_tile = self.knight_start[1] // TILE_SIZE
 
-        # More complex or larger patterns of walls and open spaces
         for y in range(1, self.height - 1):
             for x in range(1, self.width - 1):
-                # Ensure no tiles are placed within the safe zone
                 if (
                     random.random() < 0.15 and
                     not (knight_x_tile - self.safe_zone <= x <= knight_x_tile + self.safe_zone and
@@ -257,8 +270,7 @@ class Level:
         num_items = 5
         num_enemies = 5
         for _ in range(num_items):
-            x = random.randint(1, self.width - 2) * TILE_SIZE
-            y = random.randint(1, self.height - 2) * TILE_SIZE
+            x, y = self.get_valid_position(grid)
             item = pygame.sprite.Sprite()
             item.image = coin
             item.rect = item.image.get_rect()
@@ -266,11 +278,36 @@ class Level:
             self.items.add(item)
 
         for _ in range(num_enemies):
-            x = random.randint(1, self.width - 2) * TILE_SIZE
-            y = random.randint(1, self.height - 2) * TILE_SIZE
+            x, y = self.get_valid_position(grid)
             enemy_choice = random.choice([Enemy, Enemy2, Enemy3]) if self.level_index < 4 else Enemy3
             enemy = enemy_choice(x, y)
             self.enemies.add(enemy)
+
+        shop_x, shop_y = self.get_valid_position(grid)
+        self.shop = Shop(shop_x, shop_y)
+        print(shop_x, shop_y)
+    def get_valid_position(self, grid):
+        """Find a random position where there is no tile."""
+        while True:
+            x = random.randint(1, self.width - 2) * TILE_SIZE
+            y = random.randint(1, self.height - 2) * TILE_SIZE
+            tile_x, tile_y = x // TILE_SIZE, y // TILE_SIZE
+            if grid[tile_y][tile_x] == 0:  # No tile present
+                return x, y
+
+    def draw(self, surface, camera):
+        for tile in self.tiles:
+            surface.blit(tile.image, camera.apply(tile))
+        for item in self.items:
+            surface.blit(item.image, camera.apply(item))
+        for enemy in self.enemies:
+            surface.blit(enemy.image, camera.apply(enemy))
+            enemy.draw_health_bar(surface, camera)
+        if self.portal:
+            surface.blit(self.portal.image, camera.apply(self.portal))
+        if self.shop:
+            self.shop.draw(surface, camera)
+
 
     def draw(self, surface, camera):
         for tile in self.tiles:
@@ -282,6 +319,61 @@ class Level:
             enemy.draw_health_bar(surface, camera)  # Draw the health bar
         if self.portal:
             surface.blit(self.portal.image, camera.apply(self.portal))
+        if self.shop:
+            surface.blit(self.shop.image, camera.apply(self.shop))  # Draw the shop
+
+def shop_menu(player, level):
+    """Shop menu where player can buy health and stars."""
+    shop_running = True
+    font = pygame.font.Font(None, 40)
+    notification = None
+    notification_time = 0
+
+    while shop_running:
+        screen.fill(DARK_BROWN)  # Background color
+
+        # Display shop options
+        heading = font.render("You can only use shop once in each level!", True, WHITE)
+        health_text = font.render("Press H to buy +1 Health (5 Coins)", True, WHITE)
+        star_text = font.render("Press S to buy +5 Stars (5 Coins)", True, WHITE)
+        exit_text = font.render("Press X to Exit", True, WHITE)
+        coins_text = font.render(f"Coins: {player.coins}", True, WHITE)
+
+        screen.blit(heading, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3))
+        screen.blit(health_text, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 50))
+        screen.blit(star_text, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 100))
+        screen.blit(exit_text, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 150))
+        screen.blit(coins_text, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 200))
+
+        # Display notification if any
+        if notification and pygame.time.get_ticks() - notification_time < 2000:  # Show notification for 2 seconds
+            notification_render = font.render(notification, True, RED if "not enough" in notification else GREEN)
+            screen.blit(notification_render, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 200))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_h:
+                    if player.coins >= 5:
+                        if player.health % 4 == 0:
+                            player.health += 4  # Restore one full heart
+                            player.coins -= 5
+                            notification = "One heart restored!"
+                        else:
+                            notification = "No full heart lost!"
+                    else:
+                        notification = "Not enough coins!"
+                    notification_time = pygame.time.get_ticks()
+                if event.key == pygame.K_x:
+                    level.shop = None
+                    shop_running = False
+
+
+
 
 # Main game function
 def main():
@@ -291,6 +383,7 @@ def main():
     level_index = 0
     level = Level(SCREEN_WIDTH // TILE_SIZE,
                   SCREEN_HEIGHT // TILE_SIZE, level_index)
+    print(level.tiles)
 
     all_sprites = pygame.sprite.Group()
     stars = pygame.sprite.Group()
@@ -300,15 +393,12 @@ def main():
 
     camera = Camera(level.width * TILE_SIZE, level.height * TILE_SIZE)
 
-    remaining_stars = 10
-    remaining_coins = 0
     last_throw_time = 0
     cooldown = 200
     running = True
 
     while running:
         current_time = pygame.time.get_ticks()
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -325,7 +415,7 @@ def main():
             dy += 5
         player.move(dx, dy)
 
-        if keys[pygame.K_k] and current_time - last_throw_time > cooldown and remaining_stars > 0:
+        if keys[pygame.K_k] and current_time - last_throw_time > cooldown and player.stars > 0:
             stars_sound.play()
             direction = 1 if player.facing_right else -1
             star = Star(player.rect.centerx, player.rect.centery,
@@ -333,7 +423,7 @@ def main():
             stars.add(star)
             all_sprites.add(star)
             last_throw_time = current_time
-            remaining_stars -= 1
+            player.stars -= 1
 
         if keys[pygame.K_j]:
             j_sound.play()
@@ -341,7 +431,12 @@ def main():
 
         player.update(level.tiles)
         stars.update(level.tiles, level.enemies)
+        if level.shop and pygame.sprite.collide_rect(player, level.shop):
+            shop_menu(player, level)
 
+        camera.update(player)
+        screen.blit(level_backgrounds[level_index], (0, 0))
+        level.draw(screen, camera)
         for enemy in level.enemies:
             enemy.update(player, level.tiles)  # Update enemy logic
             screen.blit(enemy.image, camera.apply(enemy.rect))  # Draw enemy at camera-adjusted position
@@ -350,14 +445,10 @@ def main():
             # Update the camera to follow the player
         camera.update(player)
 
-        # Debug: Print player and camera positions
-        print(f"Player Position: {player.rect.topleft}")
-        print(f"Camera Position: {camera.camera.topleft}")
-
         collected_items = pygame.sprite.spritecollide(
             player, level.items, True)
-        for item in collected_items:
-            remaining_coins += 1
+        for _ in collected_items:
+            player.coins += 1
 
         if not level.enemies and not level.portal:
             level.portal = Portal(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -383,7 +474,6 @@ def main():
 
         for sprite in all_sprites:
             # Debug: Print sprite positions after applying camera offset
-            print(f"Sprite Position: {camera.apply(sprite).topleft}")
             # Draw player and stars with camera offset
             screen.blit(sprite.image, camera.apply(sprite))
 
@@ -391,12 +481,12 @@ def main():
 
         screen.blit(star_image, (15, 53))
         font = pygame.font.Font(None, 36)
-        stars_text = font.render(f"x {remaining_stars}", True, WHITE)
+        stars_text = font.render(f"x {player.stars}", True, WHITE)
         screen.blit(stars_text, (45, 50))
 
         screen.blit(coin, (10, 80))
         font = pygame.font.Font(None, 36)
-        stars_text = font.render(f"x {remaining_coins}", True, WHITE)
+        stars_text = font.render(f"x {player.coins}", True, WHITE)
         screen.blit(stars_text, (45, 83))
 
         pygame.display.flip()
