@@ -22,19 +22,20 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
         self.speed = 2  # Movement speed
-        self.health = 2  # Enemy requires two hits to die
+        self.health = 1  # Enemy requires two hits to die
         self.max_health = 2  # Store max health for health bar scaling
-        self.cooldown = 100  # Cooldown period of 2 seconds for image toggling
+        self.cooldown = 500  # Cooldown period of 2 seconds for image toggling
         # Set initial time to current tick
         self.time_of_last_change = pygame.time.get_ticks()
         self.path = []  # Pathfinding
 
 
-    def take_damage(self):
+    def take_damage(self, player):
         """Reduce health and check if the enemy is dead."""
         self.health -= 1
         if self.health <= 0:
             self.kill()
+            player.coins += 1
 
     def draw_health_bar(self, surface, camera):
         pass
@@ -158,9 +159,16 @@ class Enemy2(Enemy):
             self.image2, (TILE_SIZE, TILE_SIZE))
         self.image = self.image1
         self.speed = 2  # Faster than Enemy1
-        self.health = 4  # Takes 4 hits to die
+        self.health = 2  # Takes 2 hits to die
         self.max_health = 4
-        self.cooldown = 100  # Cooldown period for image toggling remains the same
+        self.cooldown = 400  # Cooldown period for image toggling remains the same
+
+    def take_damage(self, player):
+        """Reduce health and check if the enemy is dead."""
+        self.health -= 1
+        if self.health <= 0:
+            self.kill()
+            player.coins += 3
 
 
 class Enemy3(Enemy):
@@ -177,9 +185,16 @@ class Enemy3(Enemy):
             self.image2, (TILE_SIZE, TILE_SIZE))
         self.image = self.image1
         self.speed = 3  # Faster than Enemy2
-        self.health = 6  # Takes 6 hits to die
+        self.health = 4  # Takes 4 hits to die
         self.max_health = 6
-        self.cooldown = 100  # Reduced cooldown for faster interaction
+        self.cooldown = 300  # Reduced cooldown for faster interaction
+        
+    def take_damage(self, player):
+        """Reduce health and check if the enemy is dead."""
+        self.health -= 1
+        if self.health <= 0:
+            self.kill()
+            player.coins += 5
 
 
 class BossEnemy(Enemy):
@@ -196,6 +211,6 @@ class BossEnemy(Enemy):
             self.image2, (TILE_SIZE * 2, TILE_SIZE * 2))
         self.image = self.image1
         self.speed = 1  # Slower movement due to size
-        self.health = 20  # Takes 20 hits to die
+        self.health = 15  # Takes 20 hits to die
         self.max_health = 20
-        self.cooldown = 100  # Faster interaction
+        self.cooldown = 500  # Faster interaction

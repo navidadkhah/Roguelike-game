@@ -79,7 +79,7 @@ class Camera:
 
 
 class Star(pygame.sprite.Sprite):
-    def __init__(self, x, y, direction, level_width):
+    def __init__(self, x, y, direction, level_width, player):
         super().__init__()
         self.original_image = star_image  # Save the original image for rotation
         self.image = self.original_image
@@ -88,7 +88,7 @@ class Star(pygame.sprite.Sprite):
         self.direction = direction
         self.angle = 0  # Initial angle for rotation
         self.level_width = level_width  # Level width in pixels
-
+        self.player = player
     def update(self, tiles, enemy_group):
         # Rotate the star
         self.angle += 10  # Adjust rotation speed as needed
@@ -111,7 +111,7 @@ class Star(pygame.sprite.Sprite):
             self, enemy_group, False)  # Do not remove the enemy immediately
         if collided_enemies:
             for enemy in collided_enemies:
-                enemy.take_damage()  # Reduce enemy's health
+                enemy.take_damage(self.player)  # Reduce enemy's health
             self.kill()  # Remove the star after hitting the enemy
 
 # Player class
@@ -130,7 +130,7 @@ class Player(pygame.sprite.Sprite):
             self.last_image_change_time = None  # Timer for image change
             self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
             self.damage_applied = False
-            self.health = 50  # Total health points (3 full hearts, 4 hits per heart)
+            self.health = 12
             self.coins = 0
             self.stars = 10
 
@@ -176,7 +176,7 @@ class Player(pygame.sprite.Sprite):
             if not self.damage_applied:
                 for enemy in enemies:
                     if self.is_nearby(enemy):
-                        enemy.take_damage()  # Damage enemy
+                        enemy.take_damage(self)  # Damage enemy
                 self.damage_applied = True
 
     def is_nearby(self, enemy):
@@ -189,7 +189,6 @@ class Player(pygame.sprite.Sprite):
     def take_damage(self):
         """Reduce health and manage heart images."""
         self.health -= 1
-        print(self.health)
         if self.health <= 0:
             # Handle game over or player death scenario
             print("Player has died")
@@ -285,7 +284,6 @@ class Level:
 
         shop_x, shop_y = self.get_valid_position(grid)
         self.shop = Shop(shop_x, shop_y)
-        print(shop_x, shop_y)
     def get_valid_position(self, grid):
         """Find a random position where there is no tile."""
         while True:
@@ -348,7 +346,7 @@ def shop_menu(player, level):
         # Display notification if any
         if notification and pygame.time.get_ticks() - notification_time < 2000:  # Show notification for 2 seconds
             notification_render = font.render(notification, True, RED if "not enough" in notification else GREEN)
-            screen.blit(notification_render, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 200))
+            screen.blit(notification_render, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 250))
 
         pygame.display.flip()
 
@@ -359,12 +357,12 @@ def shop_menu(player, level):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_h:
                     if player.coins >= 5:
-                        if player.health % 4 == 0:
-                            player.health += 4  # Restore one full heart
+                        if player.health <= 10:
+                            player.health += 2
                             player.coins -= 5
-                            notification = "One heart restored!"
+                            notification = "Half of a heart restored!"
                         else:
-                            notification = "No full heart lost!"
+                            notification = "No half heart lost!"
                     else:
                         notification = "Not enough coins!"
                     notification_time = pygame.time.get_ticks()
@@ -383,7 +381,6 @@ def main():
     level_index = 0
     level = Level(SCREEN_WIDTH // TILE_SIZE,
                   SCREEN_HEIGHT // TILE_SIZE, level_index)
-    print(level.tiles)
 
     all_sprites = pygame.sprite.Group()
     stars = pygame.sprite.Group()
@@ -402,7 +399,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
+        print(player.health)
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -419,7 +416,7 @@ def main():
             stars_sound.play()
             direction = 1 if player.facing_right else -1
             star = Star(player.rect.centerx, player.rect.centery,
-                        direction, level.width * TILE_SIZE)
+                        direction, level.width * TILE_SIZE, player)
             stars.add(star)
             all_sprites.add(star)
             last_throw_time = current_time
@@ -473,7 +470,6 @@ def main():
         level.draw(screen, camera)
 
         for sprite in all_sprites:
-            # Debug: Print sprite positions after applying camera offset
             # Draw player and stars with camera offset
             screen.blit(sprite.image, camera.apply(sprite))
 
