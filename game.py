@@ -355,6 +355,12 @@ def shop_menu(player, level):
                 pygame.quit()
                 exit()
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s:
+                    if player.coins >= 5:
+                        player.stars += 5
+                        player.coins -=5
+                        notification = "5 Stars added!"
+            if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_h:
                     if player.coins >= 5:
                         if player.health <= 10:
