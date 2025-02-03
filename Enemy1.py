@@ -213,4 +213,4 @@ class BossEnemy(Enemy):
         self.speed = 1  # Slower movement due to size
         self.health = 15  # Takes 20 hits to die
         self.max_health = 20
-        self.cooldown = 500  # Faster interaction
+        self.cooldown = 200

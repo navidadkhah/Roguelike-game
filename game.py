@@ -38,6 +38,8 @@ for i in range(len(level_backgrounds)):
         level_backgrounds[i], (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Portal class
+
+
 class Portal(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -49,12 +51,13 @@ class Portal(pygame.sprite.Sprite):
         self.rect.center = (x, y)
 
 # Camera class
+
+
 class Camera:
     def __init__(self, width, height):
         self.camera = pygame.Rect(0, 0, width, height)
         self.width = width
         self.height = height
-
 
     def apply(self, target):
         """Applies the camera offset to the entity's position."""
@@ -89,6 +92,7 @@ class Star(pygame.sprite.Sprite):
         self.angle = 0  # Initial angle for rotation
         self.level_width = level_width  # Level width in pixels
         self.player = player
+
     def update(self, tiles, enemy_group):
         # Rotate the star
         self.angle += 10  # Adjust rotation speed as needed
@@ -115,69 +119,78 @@ class Star(pygame.sprite.Sprite):
             self.kill()  # Remove the star after hitting the enemy
 
 # Player class
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
-            super().__init__()
-            self.original_image = pygame.image.load("images/Knight/knight1.png")  # Original image
-            self.original_image = pygame.transform.scale(self.original_image, (KNIGHT_SIZE, KNIGHT_SIZE))
-            self.alternate_image = pygame.image.load("images/Knight/knight2.png")  # Alternate image
-            self.alternate_image = pygame.transform.scale(self.alternate_image, (KNIGHT_SIZE, KNIGHT_SIZE))
-            self.image = self.original_image
-            self.rect = self.image.get_rect()
-            self.rect.topleft = (x, y)
-            self.dx, self.dy = 0, 0
-            self.facing_right = True  # Track the direction the player is facing
-            self.last_image_change_time = None  # Timer for image change
-            self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
-            self.damage_applied = False
-            self.health = 12
-            self.coins = 0
-            self.stars = 10
+        super().__init__()
+        self.original_image = pygame.image.load(
+            "images/Knight/knight1.png")  # Original image
+        self.original_image = pygame.transform.scale(
+            self.original_image, (KNIGHT_SIZE, KNIGHT_SIZE))
+        self.alternate_image = pygame.image.load(
+            "images/Knight/knight2.png")  # Alternate image
+        self.alternate_image = pygame.transform.scale(
+            self.alternate_image, (KNIGHT_SIZE, KNIGHT_SIZE))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+        self.dx, self.dy = 0, 0
+        self.facing_right = True  # Track the direction the player is facing
+        self.last_image_change_time = None  # Timer for image change
+        self.knight2_duration = 50  # Duration in milliseconds for "knight2" mode
+        self.damage_applied = False
+        self.health = 20
+        self.coins = 0
+        self.stars = 10
 
     def update(self, tiles):
-            self.rect.x += self.dx
-            if pygame.sprite.spritecollideany(self, tiles):
-                self.rect.x -= self.dx
-            self.rect.y += self.dy
-            if pygame.sprite.spritecollideany(self, tiles):
-                self.rect.y -= self.dy
+        self.rect.x += self.dx
+        if pygame.sprite.spritecollideany(self, tiles):
+            self.rect.x -= self.dx
+        self.rect.y += self.dy
+        if pygame.sprite.spritecollideany(self, tiles):
+            self.rect.y -= self.dy
 
-            # Revert to the correct `knight1` image after the knight2 duration
-            current_time = pygame.time.get_ticks()
-            if self.last_image_change_time and current_time - self.last_image_change_time > self.knight2_duration:
-                if self.facing_right:
-                    self.image = self.original_image
-                else:
-                    self.image = pygame.transform.flip(self.original_image, True, False)
-                self.last_image_change_time = None
-                self.damage_applied = False
+        # Revert to the correct `knight1` image after the knight2 duration
+        current_time = pygame.time.get_ticks()
+        if self.last_image_change_time and current_time - self.last_image_change_time > self.knight2_duration:
+            if self.facing_right:
+                self.image = self.original_image
+            else:
+                self.image = pygame.transform.flip(
+                    self.original_image, True, False)
+            self.last_image_change_time = None
+            self.damage_applied = False
 
     def move(self, dx, dy):
-            self.dx, self.dy = dx, dy
+        self.dx, self.dy = dx, dy
 
-            # Flip the images when changing direction
-            if dx < 0 and self.facing_right:  # Moving left
-                self.image = pygame.transform.flip(self.original_image, True, False)
-                self.facing_right = False
-            elif dx > 0 and not self.facing_right:  # Moving right
-                self.image = self.original_image
-                self.facing_right = True
+        # Flip the images when changing direction
+        if dx < 0 and self.facing_right:  # Moving left
+            self.image = pygame.transform.flip(
+                self.original_image, True, False)
+            self.facing_right = False
+        elif dx > 0 and not self.facing_right:  # Moving right
+            self.image = self.original_image
+            self.facing_right = True
 
     def activate_knight2(self, enemies):
-            """Switch to the alternate image and damage nearby enemies."""
-            if self.facing_right:
-                self.image = self.alternate_image
-            else:
-                self.image = pygame.transform.flip(self.alternate_image, True, False)  # Flip image if facing left
+        """Switch to the alternate image and damage nearby enemies."""
+        if self.facing_right:
+            self.image = self.alternate_image
+        else:
+            self.image = pygame.transform.flip(
+                self.alternate_image, True, False)  # Flip image if facing left
 
-            self.last_image_change_time = pygame.time.get_ticks()
+        self.last_image_change_time = pygame.time.get_ticks()
 
-            # Damage nearby enemies
-            if not self.damage_applied:
-                for enemy in enemies:
-                    if self.is_nearby(enemy):
-                        enemy.take_damage(self)  # Damage enemy
-                self.damage_applied = True
+        # Damage nearby enemies
+        if not self.damage_applied:
+            for enemy in enemies:
+                if self.is_nearby(enemy):
+                    enemy.take_damage(self)  # Damage enemy
+            self.damage_applied = True
 
     def is_nearby(self, enemy):
         """Check if an enemy is within a certain range of the player."""
@@ -195,7 +208,7 @@ class Player(pygame.sprite.Sprite):
 
     def draw_health(self, screen):
         """Draw health bar on the screen."""
-        for i in range(3):  # Player has 3 hearts
+        for i in range(5):  # Player has 5 hearts
             heart_x = 10 + i * 40
             if self.health > (i + 1) * 4:
                 screen.blit(full_heart_image, (heart_x, 10))
@@ -203,6 +216,7 @@ class Player(pygame.sprite.Sprite):
                 screen.blit(half_heart_image, (heart_x, 10))
             else:
                 screen.blit(empty_heart_image, (heart_x, 10))
+
 
 class Shop(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -267,7 +281,7 @@ class Level:
 
         # Place items and enemies considering the increased map size
         num_items = 5
-        num_enemies = 5
+        num_enemies = 5 + self.level_index
         for _ in range(num_items):
             x, y = self.get_valid_position(grid)
             item = pygame.sprite.Sprite()
@@ -275,15 +289,19 @@ class Level:
             item.rect = item.image.get_rect()
             item.rect.topleft = (x, y)
             self.items.add(item)
-
+        if self.level_index == 4:
+            x, y = self.get_valid_position(grid)
+            boss = BossEnemy(x, y)
+            self.enemies.add(boss)
         for _ in range(num_enemies):
             x, y = self.get_valid_position(grid)
-            enemy_choice = random.choice([Enemy, Enemy2, Enemy3]) if self.level_index < 4 else Enemy3
+            enemy_choice = random.choice([Enemy, Enemy2, Enemy3])
             enemy = enemy_choice(x, y)
             self.enemies.add(enemy)
 
         shop_x, shop_y = self.get_valid_position(grid)
         self.shop = Shop(shop_x, shop_y)
+
     def get_valid_position(self, grid):
         """Find a random position where there is no tile."""
         while True:
@@ -306,7 +324,6 @@ class Level:
         if self.shop:
             self.shop.draw(surface, camera)
 
-
     def draw(self, surface, camera):
         for tile in self.tiles:
             surface.blit(tile.image, camera.apply(tile))
@@ -318,7 +335,9 @@ class Level:
         if self.portal:
             surface.blit(self.portal.image, camera.apply(self.portal))
         if self.shop:
-            surface.blit(self.shop.image, camera.apply(self.shop))  # Draw the shop
+            surface.blit(self.shop.image, camera.apply(
+                self.shop))  # Draw the shop
+
 
 def shop_menu(player, level):
     """Shop menu where player can buy health and stars."""
@@ -331,9 +350,12 @@ def shop_menu(player, level):
         screen.fill(DARK_BROWN)  # Background color
 
         # Display shop options
-        heading = font.render("You can only use shop once in each level!", True, WHITE)
-        health_text = font.render("Press H to buy +1 Health (5 Coins)", True, WHITE)
-        star_text = font.render("Press S to buy +5 Stars (5 Coins)", True, WHITE)
+        heading = font.render(
+            "You can only use shop once in each level!", True, WHITE)
+        health_text = font.render(
+            "Press H to buy Half of a Heart (5 Coins)", True, WHITE)
+        star_text = font.render(
+            "Press S to buy +5 Stars (5 Coins)", True, WHITE)
         exit_text = font.render("Press X to Exit", True, WHITE)
         coins_text = font.render(f"Coins: {player.coins}", True, WHITE)
 
@@ -345,8 +367,10 @@ def shop_menu(player, level):
 
         # Display notification if any
         if notification and pygame.time.get_ticks() - notification_time < 2000:  # Show notification for 2 seconds
-            notification_render = font.render(notification, True, RED if "not enough" in notification else GREEN)
-            screen.blit(notification_render, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 250))
+            notification_render = font.render(
+                notification, True, RED if "not enough" in notification else GREEN)
+            screen.blit(notification_render,
+                        (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 3 + 250))
 
         pygame.display.flip()
 
@@ -358,12 +382,12 @@ def shop_menu(player, level):
                 if event.key == pygame.K_s:
                     if player.coins >= 5:
                         player.stars += 5
-                        player.coins -=5
+                        player.coins -= 5
                         notification = "5 Stars added!"
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_h:
                     if player.coins >= 5:
-                        if player.health <= 10:
+                        if player.health <= 18:
                             player.health += 2
                             player.coins -= 5
                             notification = "Half of a heart restored!"
@@ -377,6 +401,44 @@ def shop_menu(player, level):
                     shop_running = False
 
 
+def show_game_over():
+    screen.fill(BLACK)
+    font = pygame.font.Font(None, 50)
+    text = font.render("Game Over", True, RED)
+    play_again_text = font.render("Press R to Restart", True, WHITE)
+
+    screen.blit(text, (SCREEN_WIDTH // 3, SCREEN_HEIGHT // 3))
+    screen.blit(play_again_text, (SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2))
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                waiting = False
+
+
+def show_you_win():
+    screen.fill(BLACK)
+    font = pygame.font.Font(None, 50)
+    text = font.render("You Win!", True, GREEN)
+    play_again_text = font.render("Press R to Restart", True, WHITE)
+
+    screen.blit(text, (SCREEN_WIDTH // 3, SCREEN_HEIGHT // 3))
+    screen.blit(play_again_text, (SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2))
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                waiting = False
 
 
 # Main game function
@@ -442,8 +504,10 @@ def main():
         level.draw(screen, camera)
         for enemy in level.enemies:
             enemy.update(player, level.tiles)  # Update enemy logic
-            screen.blit(enemy.image, camera.apply(enemy.rect))  # Draw enemy at camera-adjusted position
-            enemy.draw_health_bar(screen, camera)  # Draw health bar at camera-adjusted position
+            # Draw enemy at camera-adjusted position
+            screen.blit(enemy.image, camera.apply(enemy.rect))
+            # Draw health bar at camera-adjusted position
+            enemy.draw_health_bar(screen, camera)
 
             # Update the camera to follow the player
         camera.update(player)
@@ -460,14 +524,17 @@ def main():
         if level.portal and pygame.sprite.spritecollideany(player, [level.portal]):
             level_index += 1
             if level_index >= len(level_backgrounds):
-                print("You won!")
-                running = False
+                show_you_win()
+                main()
             else:
                 player.rect.topleft = (100, 100)
                 level = Level(SCREEN_WIDTH // TILE_SIZE,
                               SCREEN_HEIGHT // TILE_SIZE, level_index)
                 all_sprites.empty()
                 all_sprites.add(player, level.enemies, level.items)
+        if player.health <= 0:
+            show_game_over()
+            main()
 
         # Draw everything relative to the camera
         # Draw background without camera offset
